@@ -1,20 +1,17 @@
-﻿using Newtonsoft.Json;
-using RestSharp;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace OgameWrapper.Model
+﻿namespace OgameWrapper.Model
 {
     public class Credentials
     {
         public string Email { get; set; }
+
         public string Password { get; set; }
+
         public string Language { get; set; }
+
         public int Number { get; set; }
+
         public string? Token { get; set; }
+
         public Credentials(string email, string password, string language, int number)
         {
             Email = email;
@@ -24,172 +21,128 @@ namespace OgameWrapper.Model
         }
     }
 
-
-    public class Server
+    public record Server
     {
-        [JsonProperty(PropertyName = "language")]
-        public string Language { get; set; }
+        public string Language { get; init; } = string.Empty;
 
-        [JsonProperty(PropertyName = "number")]
-        public int Number { get; set; }
+        public int Number { get; init; } = 0;
     }
 
-    public class Detail
+    public record Detail
     {
-        [JsonProperty(PropertyName = "type")]
-        public string Type { get; set; }
+        public string Type { get; init; } = string.Empty;
 
-        [JsonProperty(PropertyName = "title")]
-        public string Title { get; set; }
+        public string Title { get; init; } = string.Empty;
 
-        [JsonProperty(PropertyName = "value")]
-        public string Value { get; set; }
+        public string Value { get; init; } = string.Empty;
     }
 
     public class Sitting
     {
-        [JsonProperty(PropertyName = "shared")]
-        public bool Generated { get; set; }
+        public bool Generated { get; init; } = false;
 
-        [JsonProperty(PropertyName = "endTime")]
-        public DateTime? EndTime { get; set; }
+        public DateTime? EndTime { get; init; } = null;
 
-        [JsonProperty(PropertyName = "cooldownTime")]
-        public DateTime? CooldownTime { get; set; }
+        public DateTime? CooldownTime { get; init; } = null;
     }
 
     public class Trading
     {
-        [JsonProperty(PropertyName = "trading")]
-        public bool Generated { get; set; }
+        public bool Generated { get; init; } = false;
 
-        [JsonProperty(PropertyName = "cooldownTime")]
-        public DateTime? CooldownTime { get; set; }
+        public DateTime? CooldownTime { get; init; } = null;
     }
 
     public class AccountInfo
     {
-        [JsonProperty(PropertyName = "server")]
-        public Server Server { get; set; }
+        public Server Server { get; init; } = new();
 
-        [JsonProperty(PropertyName = "id")]
-        public int Id { get; set; }
+        public int Id { get; init; } = 0;
 
-        [JsonProperty(PropertyName = "gameAccountId")]
-        public int GameAccountId { get; set; }
+        public int GameAccountId { get; init; } = 0;
 
-        [JsonProperty(PropertyName = "name")]
-        public string Name { get; set; }
+        public string Name { get; init; } = string.Empty;
 
-        [JsonProperty(PropertyName = "lastPlayed")]
-        public DateTime LastPlayed { get; set; }
+        public DateTime LastPlayed { get; init; } = DateTime.MinValue;
 
-        [JsonProperty(PropertyName = "lastLogin")]
-        public DateTime LastLogin { get; set; }
+        public DateTime LastLogin { get; init; } = DateTime.MinValue;
 
-        [JsonProperty(PropertyName = "blocked")]
-        public bool Blocked { get; set; }
+        public bool Blocked { get; init; } = false;
 
-        [JsonProperty(PropertyName = "bannedUntil")]
-        public DateTime? BannedUntil { get; set; }
+        public DateTime? BannedUntil { get; init; } = null;
 
-        [JsonProperty(PropertyName = "bannedReason")]
-        public string BannedReason { get; set; }
+        public string BannedReason { get; init; } = string.Empty;
 
-        [JsonProperty(PropertyName = "details")]
-        public List<Detail> Details { get; set; }
+        public List<Detail> Details { get; init; } = new();
 
-        [JsonProperty(PropertyName = "sitting")]
-        public Sitting Sitting { get; set; }
+        public Sitting Sitting { get; init; } = new();
 
-        [JsonProperty(PropertyName = "trading")]
-        public Trading Trading { get; set; }
+        public Trading Trading { get; init; } = new();
     }
 
     public class Settings
     {
-        [JsonProperty(PropertyName = "aks")]
-        public int Aks;
+        public bool Aks { get; init; } = false;
 
-        [JsonProperty(PropertyName = "wreckField")]
-        public int WreckField;
+        public bool WreckField { get; init; } = false;
 
-        [JsonProperty(PropertyName = "serverLabel")]
-        public string ServerLabel;
+        public string ServerLabel { get; init; } = string.Empty;
 
-        [JsonProperty(PropertyName = "economySpeed")]
-        public int EconomySpeed;
+        public int EconomySpeed { get; init; } = 0;
 
-        [JsonProperty(PropertyName = "planetFields")]
-        public int PlanetFields;
+        public int PlanetFields { get; init; } = 0;
 
-        [JsonProperty(PropertyName = "universeSize")]
-        public int UniverseSize;
+        public int UniverseSize { get; init; } = 0;
 
-        [JsonProperty(PropertyName = "fleetSpeedWar")]
-        public int FleetSpeedWar;
+        public int FleetSpeedWar { get; init; } = 0;
 
-        [JsonProperty(PropertyName = "serverCategory")]
-        public string ServerCategory;
+        public string ServerCategory { get; init; } = string.Empty;
 
-        [JsonProperty(PropertyName = "fleetSpeedHolding")]
-        public int FleetSpeedHolding;
+        public int FleetSpeedHolding { get; init; } = 0;
 
-        [JsonProperty(PropertyName = "fleetSpeedPeaceful")]
-        public int FleetSpeedPeaceful;
+        public int FleetSpeedPeaceful { get; init; } = 0;
 
-        [JsonProperty(PropertyName = "espionageProbeRaids")]
-        public int EspionageProbeRaids;
+        public bool EspionageProbeRaids { get; init; } = false;
 
-        [JsonProperty(PropertyName = "premiumValidationGift")]
-        public int PremiumValidationGift;
+        public int PremiumValidationGift { get; init; } = 0;
 
-        [JsonProperty(PropertyName = "debrisFieldFactorShips")]
-        public int DebrisFieldFactorShips;
+        public int DebrisFieldFactorShips { get; init; } = 0;
 
-        [JsonProperty(PropertyName = "researchDurationDivisor")]
-        public double ResearchDurationDivisor;
+        public double ResearchDurationDivisor { get; init; } = 0;
 
-        [JsonProperty(PropertyName = "debrisFieldFactorDefence")]
-        public int DebrisFieldFactorDefence;
+        public int DebrisFieldFactorDefence { get; init; } = 0;
     }
 
     public class ServerInfo
     {
-        [JsonProperty(PropertyName = "language")]
-        public string Language;
+        public string Language { get; init; } = string.Empty;
 
-        [JsonProperty(PropertyName = "number")]
-        public int Number;
+        public int Number { get; init; } = 0;
 
-        [JsonProperty(PropertyName = "name")]
-        public string Name;
+        public string AccountGroup { get; init; } = string.Empty;
 
-        [JsonProperty(PropertyName = "playerCount")]
-        public int PlayerCount;
+        public string Name { get; init; } = string.Empty;
 
-        [JsonProperty(PropertyName = "playersOnline")]
-        public int PlayersOnline;
+        public int PlayerCount { get; init; } = 0;
 
-        [JsonProperty(PropertyName = "opened")]
-        public DateTime Opened;
+        public int PlayersOnline { get; init; } = 0;
 
-        [JsonProperty(PropertyName = "startDate")]
-        public DateTime StartDate;
+        public DateTime Opened { get; init; } = DateTime.MinValue;
 
-        [JsonProperty(PropertyName = "endDate")]
-        public object EndDate;
+        public DateTime StartDate { get; init; } = DateTime.MinValue;
 
-        [JsonProperty(PropertyName = "serverClosed")]
-        public int ServerClosed;
+        public DateTime? EndDate { get; init; } = null;
 
-        [JsonProperty(PropertyName = "prefered")]
-        public int Prefered;
+        public bool ServerClosed { get; init; } = false;
 
-        [JsonProperty(PropertyName = "signupClosed")]
-        public int SignupClosed;
+        public bool Prefered { get; init; } = false;
 
-        [JsonProperty(PropertyName = "settings")]
-        public Settings Settings;
+        public bool SignupClosed { get; init; } = false;
+
+        public bool MultiLanguage { get; init; } = false;
+
+        public List<string> AvailableOn { get; init; } = new();
+
+        public Settings Settings { get; init; } = new();
     }
 }

@@ -272,6 +272,7 @@ namespace OgameWrapper.Includes
                         Max = int.Parse(maxString)
                     };
 
+                    // TOFIX : construction detected as a moon
                     var moonElement = el.Children.Last();
                     if (moonElement != planetElement)
                     {

@@ -1,4 +1,4 @@
-﻿
+
 using OgameWrapper.Model;
 using OgameWrapper.Includes;
 using System;
@@ -10,29 +10,29 @@ namespace OgameWrapper.Sample
     {
         private static OgameWrapperClient ogameClient;
 
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             Credentials credentials = new("em@i.l", "password", "en", 132);
             ogameClient = new(credentials);
 
-            var login = ogameClient.Login();
+            var login = await ogameClient.Login();
             
             if (login)
             {
                 var time1 = DateTime.Now;
-                var isVacationMode = ogameClient.IsInVacationMode();
+                var isVacationMode = await ogameClient.IsInVacationMode();
                 var time2 = DateTime.Now;
                 Console.WriteLine("IsInVacationMode: " + time2.Subtract(time1).TotalMilliseconds + "ms");
                 Console.WriteLine();
 
                 time1 = DateTime.Now;
-                var isUnderAttack = ogameClient.IsUnderAttack();
+                var isUnderAttack = await ogameClient.IsUnderAttack();
                 time2 = DateTime.Now;
                 Console.WriteLine("IsUnderAttack: " + time2.Subtract(time1).TotalMilliseconds + "ms");
                 Console.WriteLine();
 
                 time1 = DateTime.Now;
-                var playerClass = ogameClient.GetPlayerClass();
+                var playerClass = await ogameClient.GetPlayerClass();
                 time2 = DateTime.Now;
                 Console.WriteLine("GetPlayerClass: " + time2.Subtract(time1).TotalMilliseconds + "ms");
                 Console.WriteLine();
@@ -44,25 +44,25 @@ namespace OgameWrapper.Sample
                 Console.WriteLine();
 
                 time1 = DateTime.Now;
-                var staff = ogameClient.GetStaff();
+                var staff = await ogameClient.GetStaff();
                 time2 = DateTime.Now;
                 Console.WriteLine("GetStaff: " + time2.Subtract(time1).TotalMilliseconds + "ms");
                 Console.WriteLine();
 
                 time1 = DateTime.Now;
-                var researches = ogameClient.GetResearches();
+                var researches = await ogameClient.GetResearches();
                 time2 = DateTime.Now;
                 Console.WriteLine("GetResearches: " + time2.Subtract(time1).TotalMilliseconds + "ms");
                 Console.WriteLine();
 
                 time1 = DateTime.Now;
-                var slots = ogameClient.GetSlots();
+                var slots = await ogameClient.GetSlots();
                 time2 = DateTime.Now;
                 Console.WriteLine("GetSlots: " + time2.Subtract(time1).TotalMilliseconds + "ms");
                 Console.WriteLine();
 
                 time1 = DateTime.Now;
-                var celestials = ogameClient.GetCelestials();
+                var celestials = await ogameClient.GetCelestials();
                 time2 = DateTime.Now;
                 Console.WriteLine("GetCelestials: " + time2.Subtract(time1).TotalMilliseconds + "ms");
                 var count = celestials.Count;
@@ -70,14 +70,14 @@ namespace OgameWrapper.Sample
                 Console.WriteLine();
 
                 time1 = DateTime.Now;
-                celestials.ForEach(c => c.GetTechs(ogameClient));
+                celestials.ForEach(async c => await c.GetTechs(ogameClient));
                 time2 = DateTime.Now;
                 Console.WriteLine("Celestial.GetTechs: " + time2.Subtract(time1).TotalMilliseconds + "ms");
                 Console.WriteLine("per celestial: " + (time2.Subtract(time1).TotalMilliseconds / count) + "ms");
                 Console.WriteLine();
 
                 time1 = DateTime.Now;
-                celestials.ForEach(c => c.GetResources(ogameClient));
+                celestials.ForEach(async c => await c.GetResources(ogameClient));
                 time2 = DateTime.Now;
                 Console.WriteLine("Celestial.GetResources: " + time2.Subtract(time1).TotalMilliseconds + "ms");
                 Console.WriteLine("per celestial: " + (time2.Subtract(time1).TotalMilliseconds / count) + "ms");
@@ -90,42 +90,42 @@ namespace OgameWrapper.Sample
                 Console.WriteLine();
 
                 time1 = DateTime.Now;
-                celestials.ForEach(c => c.GetBuildings(ogameClient));
+                celestials.ForEach(async c => await c.GetBuildings(ogameClient));
                 time2 = DateTime.Now;
                 Console.WriteLine("Celestial.GetBuildings: " + time2.Subtract(time1).TotalMilliseconds + "ms");
                 Console.WriteLine("per celestial: " + (time2.Subtract(time1).TotalMilliseconds / count) + "ms");
                 Console.WriteLine();
 
                 time1 = DateTime.Now;
-                celestials.ForEach(c => c.GetFacilities(ogameClient));
+                celestials.ForEach(async c => await c.GetFacilities(ogameClient));
                 time2 = DateTime.Now;
                 Console.WriteLine("Celestial.GetFacilities: " + time2.Subtract(time1).TotalMilliseconds + "ms");
                 Console.WriteLine("per celestial: " + (time2.Subtract(time1).TotalMilliseconds / count) + "ms");
                 Console.WriteLine();
 
                 time1 = DateTime.Now;
-                celestials.ForEach(c => c.GetShips(ogameClient));
+                celestials.ForEach(async c => await c.GetShips(ogameClient));
                 time2 = DateTime.Now;
                 Console.WriteLine("Celestial.GetShips: " + time2.Subtract(time1).TotalMilliseconds + "ms");
                 Console.WriteLine("per celestial: " + (time2.Subtract(time1).TotalMilliseconds / count) + "ms");
                 Console.WriteLine();
 
                 time1 = DateTime.Now;
-                celestials.ForEach(c => c.GetDefences(ogameClient));
+                celestials.ForEach(async c => await c.GetDefences(ogameClient));
                 time2 = DateTime.Now;
                 Console.WriteLine("Celestial.GetDefences: " + time2.Subtract(time1).TotalMilliseconds + "ms");
                 Console.WriteLine("per celestial: " + (time2.Subtract(time1).TotalMilliseconds / count) + "ms");
                 Console.WriteLine();
 
                 time1 = DateTime.Now;
-                celestials.ForEach(c => c.GetResourceSettings(ogameClient));
+                celestials.ForEach(async c => await c.GetResourceSettings(ogameClient));
                 time2 = DateTime.Now;
                 Console.WriteLine("Celestial.GetResourceSettings: " + time2.Subtract(time1).TotalMilliseconds + "ms");
                 Console.WriteLine("per celestial: " + (time2.Subtract(time1).TotalMilliseconds / count) + "ms");
                 Console.WriteLine();
 
                 time1 = DateTime.Now;
-                celestials.ForEach(c => c.GetResourcesProduction(ogameClient));
+                celestials.ForEach(async c => await c.GetResourcesProduction(ogameClient));
                 time2 = DateTime.Now;
                 Console.WriteLine("Celestial.GetResourcesProduction: " + time2.Subtract(time1).TotalMilliseconds + "ms");
                 Console.WriteLine("per celestial: " + (time2.Subtract(time1).TotalMilliseconds / count) + "ms");

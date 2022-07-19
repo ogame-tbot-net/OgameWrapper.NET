@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <PackageReference Include="AngleSharp" Version="0.16.1" />
-    <PackageReference Include="AngleSharp.Css" Version="0.16.2" />
     <PackageReference Include="HttpToSocks5Proxy" Version="1.4.0" />
     <PackageReference Include="JsonFlatFileDataStore" Version="2.2.3" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />

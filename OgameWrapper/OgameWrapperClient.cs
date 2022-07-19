@@ -1,103 +1,53 @@
 ﻿using Newtonsoft.Json;
 using RestSharp;
 using System.Net;
-using OgameCaptchaSolver;
-using MihaZupan;
 using OgameWrapper.Model;
 using OgameWrapper.Includes;
 using JsonFlatFileDataStore;
+using System.Text.RegularExpressions;
 
 namespace OgameWrapper
 {
     public class OgameWrapperClient
     {
-        private RestClient Client { get; set; }
-        private Credentials Credentials { get; set; }
         public bool IsLoggedIn { get; private set; }
-        public DataStore Database {get; private set; }
-        public IDocumentCollection<Celestial> Celestials { get; set; }
-        public ServerInfo ServerInfo { get; set; }
-        public string LastPage { get; set; }
-        public string LastUrl { get; set; }
-        public string IndexPhp
+
+        public IDocumentCollection<Celestial> Celestials { get; private set; }
+
+        public ServerInfo ServerInfo { get; private set; }
+
+        private RestClient Client { get; set; }
+
+        private Credentials Credentials { get; set; }
+
+        private DataStore Database { get; set; }
+
+        private string LastPage { get; set; } = string.Empty;
+
+        private string LastUrl { get; set; } = string.Empty;
+
+        private const string DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36";
+
+        private string UniverseBaseUrl
         {
             get
             {
                 return $"https://s{Credentials.Number}-{Credentials.Language.ToLower()}.ogame.gameforge.com/game/index.php?";
             }
         }
-        public int? PlayerId { get
-            {
-                return GetPlayerId();
-            } }
 
-        private int? GetPlayerId()
-        {
-            RestRequest request = new()
-            {
-                Method = Method.GET,
-                Resource = "https://lobby.ogame.gameforge.com/api/users/me/accounts"
-            };
-            var response = ExecuteRequest(request);
-            if (response.StatusCode != HttpStatusCode.OK || response.Content == string.Empty || response.Content == null)
-            {
-                return null;
-            }
-            else
-            {
-                List<AccountInfo> content = JsonConvert.DeserializeObject<List<AccountInfo>>(response.Content);
-                var thisServer = GetServerInfo();
-                if (thisServer != null)
-                {
-                    var thisAccount = content
-                        .Where(a => a.Server.Language == Credentials.Language)
-                        .Where(a => a.Server.Number == thisServer.Number)
-                        .FirstOrDefault() ?? null;
-                    if (thisAccount != null)
-                        return thisAccount.Id;
-                    else return null;
-                }
-                else return null;
-            }
-        }
-        private List<ServerInfo> GetServers()
-        {
-            RestRequest request = new()
-            {
-                Method = Method.GET,
-                Resource = "https://lobby.ogame.gameforge.com/api/servers"
-            };
-            var response = ExecuteRequest(request);
-            if (response.StatusCode != HttpStatusCode.OK || response.Content == string.Empty || response.Content == null)
-            {
-                return new();
-            }
-            else
-            {
-                List<ServerInfo> content = JsonConvert.DeserializeObject<List<ServerInfo>>(response.Content);
-                return content;
-            }
-        }
-        public ServerInfo? GetServerInfo()
-        {
-            var servers = GetServers();
-            var thisServer = servers
-                .Where(s => s.Language == Credentials.Language)
-                .Where(s => s.Number == Credentials.Number)
-                .FirstOrDefault() ?? null;
-
-            Database.ReplaceItem<ServerInfo>("serverInfo", thisServer, true);
-
-            return thisServer;
-        }
-        public OgameWrapperClient(Credentials? credentials = null, string? userAgent = null, Proxy? proxy = null)
+        public OgameWrapperClient(Credentials credentials, string? userAgent = null, Proxy? proxy = null)
         {
             IsLoggedIn = false;
             Database = new DataStore("data.json");
+
             if (Database.TryGetItem<Credentials>("credentials", out var creds) && creds.Token != null)
             {
-                Credentials = new(credentials.Email, credentials.Password, credentials.Language, credentials.Number);
-                Credentials.Token = creds.Token;
+                // NOTE : we might want to check if credentials.Email matches creds.Email to avoid wrong token use on account change
+                Credentials = new(credentials.Email, credentials.Password, credentials.Language, credentials.Number)
+                {
+                    Token = creds.Token
+                };
             }
             else
             {
@@ -108,25 +58,24 @@ namespace OgameWrapper
                 }
             }
 
-            Client = new RestClient();
-            if (userAgent != null)
+            Client = new()
             {
-                SetUserAgent(userAgent);
-            }
-            else
-            {
-                SetUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36");
-            }
+                UserAgent = userAgent ?? DEFAULT_USER_AGENT,
+                CookieContainer = new(),
+                Timeout = 30000
+            };
+
+            Client.AddDefaultHeader("Accept", "gzip, deflate, br");
+
             if (proxy != null)
             {
                 SetProxy(proxy);
             }
-            Client.AddDefaultHeader("Accept", "gzip, deflate, br");
-            Client.Timeout = 30000;
-            Client.CookieContainer = new CookieContainer();
-            
+
             Celestials = Database.GetCollection<Celestial>("Celestials");
-            if (Database.TryGetItem<ServerInfo>("serverInfo", out var si)) {
+
+            if (Database.TryGetItem<ServerInfo>("serverInfo", out var si))
+            {
                 ServerInfo = si;
             }
             else
@@ -135,185 +84,249 @@ namespace OgameWrapper
                 Database.InsertItem<ServerInfo>("serverInfo", ServerInfo);
             }
         }
+
+        private async Task<int?> GetPlayerIdFromLobby()
+        {
+            RestRequest request = new("https://lobby.ogame.gameforge.com/api/users/me/accounts");
+            var response = await ExecuteRequest<List<AccountInfo>>(request);
+            if (response.StatusCode != HttpStatusCode.OK)
+            {
+                return null;
+            }
+
+            // NOTE : note sure we need `GetServerInfo`, we have server number in `Credentials.Number`
+
+            var server = await GetServerInfo();
+            if (server != null)
+            {
+                var account = response.Data
+                    .Where(a => a.Server.Language == Credentials.Language)
+                    .Where(a => a.Server.Number == server.Number)
+                    .FirstOrDefault() ?? null;
+
+                return account?.Id;
+            }
+            
+            return null;
+        }
+
+        private async Task<List<ServerInfo>> GetServers()
+        {
+            RestRequest request = new("https://lobby.ogame.gameforge.com/api/servers");
+            var response = await ExecuteRequest<List<ServerInfo>>(request);
+            if (response.StatusCode != HttpStatusCode.OK)
+            {
+                return new();
+            }
+            return response.Data;
+        }
+
+        public async Task<ServerInfo?> GetServerInfo()
+        {
+            var servers = await GetServers();
+            var thisServer = servers
+                .Where(s => s.Language == Credentials.Language)
+                .Where(s => s.Number == Credentials.Number)
+                .FirstOrDefault(new ServerInfo());
+
+            Database.ReplaceItem("serverInfo", thisServer, true);
+
+            return thisServer;
+        }
+
         public void SetProxy(Proxy proxy)
         {
-            WebProxy webProxy = new(proxy.Address + ":" + proxy.Port.ToString());
-            if (proxy.Credentials != null)
+            Client.Proxy = new WebProxy(proxy.Address + ":" + proxy.Port.ToString())
             {
-                webProxy.Credentials = proxy.Credentials;
-            }
-            Client.Proxy = webProxy;
+                Credentials = proxy.Credentials ?? null,
+            };
         }
-        public void SetUserAgent(string userAgent)
+
+        private async Task<IRestResponse<T>> ExecuteRequest<T>(RestRequest request)
         {
-            Client.UserAgent = userAgent;
-        }
-        private IRestResponse ExecuteRequest(RestRequest request)
-        {
-            var response = Client.Execute(request);
-            if (response.ResponseUri.Host.ToString() != new Uri(request.Resource).Host.ToString())
+            var response = await Client.ExecuteAsync<T>(request);
+
+            if (response.ResponseUri.Host != new Uri(request.Resource).Host)
             {
                 IsLoggedIn = false;
                 Console.WriteLine("Not logged in!");
                 InvalidateCredentials();
-                Login();
-                return ExecuteRequest(request);
+                await Login();
+                return await ExecuteRequest<T>(request);
             }
-            else if (response.StatusCode == HttpStatusCode.Conflict && response.Headers.Any(h => h.Name == "gf-challenge-id"))
+            
+            if (response.StatusCode == HttpStatusCode.Conflict && response.Headers.Any(h => h.Name == "gf-challenge-id"))
             {
                 Console.WriteLine("Captcha required");
                 string challengeId = response.Headers.Single(h => h.Name == "gf-challenge-id").Value.ToString().Substring(0, 36);
                 var result = false;
                 while (!result)
+                {
                     result = SolveCaptcha(challengeId);
+                }
                 if (result)
+                {
                     Console.WriteLine("Captcha solved!");
-                Credentials.Token = GetBearerToken();
-                return ExecuteRequest(request);
+                }
+                Credentials.Token = await GetBearerToken();
+                return await ExecuteRequest<T>(request);
             }
-            else if (response.StatusCode == HttpStatusCode.Forbidden)
+            
+            if (response.StatusCode == HttpStatusCode.Forbidden)
             {
                 IsLoggedIn = false;
                 InvalidateCredentials();
                 throw new Exception();
             }
-            else if (response.StatusCode == HttpStatusCode.Unauthorized)
+            
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 IsLoggedIn = false;
                 InvalidateCredentials();
-                Login();
-                return ExecuteRequest(request);
+                await Login();
+                return await ExecuteRequest<T>(request);
             }
-            else
+
+            if (response.ResponseUri.AbsoluteUri.Contains($"ogame.gameforge.com/game/"))
             {
-                if (response.ResponseUri.AbsoluteUri.Contains($"ogame.gameforge.com/game/"))
-                {
-                    LastPage = response.Content;
-                    LastUrl = response.ResponseUri.AbsoluteUri;
-                }                    
-                return response;
+                LastPage = response.Content;
+                LastUrl = response.ResponseUri.AbsoluteUri;
             }
+
+            return response;
         }
-        public bool Login()
+
+        public record LoginResponse
         {
-            RestRequest request;
-            request = new RestRequest()
-            {
-                Method = Method.GET,
-                Resource = "https://lobby.ogame.gameforge.com/"
-            };
-            ExecuteRequest(request);
+            [JsonProperty("url")]
+            public string Url { get; init; } = string.Empty;
+        }
 
-            string token = String.Empty;
-            if (Credentials.Token != null)
-                token = Credentials.Token;
-            else
-                token = GetBearerToken();
+        public async Task<bool> Login()
+        {
+            RestRequest lobbyRequest = new("https://lobby.ogame.gameforge.com/");
+            await ExecuteRequest<object>(lobbyRequest);
 
-            Client.RemoveDefaultParameter("authorization");
-            Client.AddDefaultHeader("authorization", "Bearer " + token);
+            string token = Credentials.Token ?? await GetBearerToken();
+            Client.RemoveDefaultParameter("Authorization");
+            Client.AddDefaultHeader("Authorization", "Bearer " + token);
 
-            request = new()
-            {
-                Method = Method.GET,
-                Resource = "https://lobby.ogame.gameforge.com/api/users/me/loginLink"
-            };
-            request.AddParameter("id", PlayerId, ParameterType.GetOrPost);
-            request.AddParameter("server[language]", Credentials.Language, ParameterType.GetOrPost);
-            request.AddParameter("server[number]", Credentials.Number.ToString(), ParameterType.GetOrPost);
-            request.AddParameter("clickedButton", "account_list", ParameterType.GetOrPost);
-            var response = ExecuteRequest(request);
-            if (response.StatusCode != HttpStatusCode.OK || response.Content == string.Empty || response.Content == null)
+            var playerId = await GetPlayerIdFromLobby();
+
+            RestRequest loginRequest = new("https://lobby.ogame.gameforge.com/api/users/me/loginLink");
+            loginRequest.AddParameter("id", playerId);
+            loginRequest.AddParameter("server[language]", Credentials.Language);
+            loginRequest.AddParameter("server[number]", Credentials.Number);
+            loginRequest.AddParameter("clickedButton", "account_list");
+
+            var response = await ExecuteRequest<LoginResponse>(loginRequest);
+            if (response.StatusCode != HttpStatusCode.OK)
             {
                 IsLoggedIn = false;
                 Console.WriteLine("Not logged in!");
                 InvalidateCredentials();
-                return Login();
+                return await Login();
             }
-            else
-            {
-                Console.WriteLine("Logging in...");
-                dynamic loginLink = JsonConvert.DeserializeObject(response.Content);
-                response = ExecuteRequest(new RestRequest()
-                {
-                    Method = Method.GET,
-                    Resource = loginLink.url.ToString()
-                });
-                response = ExecuteRequest(new RestRequest()
-                {
-                    Method = Method.GET,
-                    Resource = IndexPhp + "page=ingame"
-                });
-                IsLoggedIn = true;
-                Console.WriteLine("Login succesful!");
-                return true;
-            }
+
+            Console.WriteLine("Logging in...");
+            await ExecuteRequest<object>(new(response.Data.Url));
+            await ExecuteRequest<object>(new(UniverseBaseUrl + "page=ingame"));
+            IsLoggedIn = true;
+            Console.WriteLine("Login succesful!");
+
+            return true;
         }
 
-        public string GetBearerToken()
+        public record Configuration
         {
-            RestRequest request;
-            IRestResponse response;
-            dynamic content;
+            public string GameEnvironmentId { get; init; } = string.Empty;
 
-            string gameEnvironmentId;
-            string platformGameId;
+            public string PlatformGameId { get; init; } = string.Empty;
+        }
 
-            request = new RestRequest()
-            {
-                Method = Method.GET,
-                Resource = "https://lobby.ogame.gameforge.com/config/configuration.js"
-            };
-            response = ExecuteRequest(request);
+        private async Task<Configuration?> GetConfiguration()
+        {
+            RestRequest request = new("https://lobby.ogame.gameforge.com/config/configuration.js");
+            var response = await Client.ExecuteAsync(request);
             if (response.StatusCode != HttpStatusCode.OK)
             {
-                throw new Exception("Unable to get https://lobby.ogame.gameforge.com/config/configuration.js");
-            }
-            else
-            {
-                gameEnvironmentId = response.Content.Substring(response.Content.IndexOf("gameEnvironmentId") + 20, 36);
-                platformGameId = response.Content.Substring(response.Content.IndexOf("platformGameId") + 17, 36);
+                return null;
             }
 
-            request = new RestRequest()
+            var content = response.Content;
+            var gameEnvironmentId = new Regex("\"gameEnvironmentId\":\"([a-f0-9-]*)\"").Match(content).Groups.Values.Last().Value;
+            var platformGameId = new Regex("\"platformGameId\":\"([a-f0-9-]*)\"").Match(content).Groups.Values.Last().Value;
+
+            return new()
             {
-                Method = Method.POST,
-                Resource = "https://gameforge.com/api/v1/auth/thin/sessions"
+                GameEnvironmentId = gameEnvironmentId,
+                PlatformGameId = platformGameId,
             };
+        }
+
+        public record SessionsResponse
+        {
+            public string Token { get; init; } = string.Empty;
+
+            public bool IsPlatformLogin { get; init; } = default;
+
+            public bool IsGameAccountMigrated { get; init; } = default;
+
+            public string PlatformUserId { get; init; } = string.Empty;
+
+            public bool IsGameAccountCreated { get; init; } = default;
+
+            public bool HasUnmigratedGameAccounts { get; init; } = default;
+        }
+
+        public async Task<string> GetBearerToken()
+        {
+            var configuration = await GetConfiguration();
+            if (configuration == null)
+            {
+                return string.Empty;
+            }
+
+            RestRequest request = new("https://gameforge.com/api/v1/auth/thin/sessions", Method.POST);
+
             request.AddHeader("Content-Type", "application/json");
             request.AddJsonBody(new
             {
                 identity = Credentials.Email,
                 password = Credentials.Password,
-                gfLang = "en",
-                locale = "en_EN",
-                gameEnvironmentId = gameEnvironmentId,
-                platformGameId = platformGameId,
+                gfLang = "en", // TODO : use configuration lang / locale
+                locale = "en_EN", // TODO : use configuration lang / locale
+                gameEnvironmentId = configuration.GameEnvironmentId,
+                platformGameId = configuration.PlatformGameId,
                 autoGameAccountCreation = false
             });
-            response = ExecuteRequest(request);
-            if (response.StatusCode != HttpStatusCode.Created || response.Content == string.Empty || response.Content == null)
+
+            var response = await Client.ExecuteAsync<SessionsResponse>(request);
+            if (response.StatusCode != HttpStatusCode.Created)
             {
                 IsLoggedIn = false;
                 Console.WriteLine($"Error {response.StatusCode}: {response.ErrorMessage}");
                 InvalidateCredentials();
-                return "";
+                return string.Empty;
             }
-            else
+
+            var token = response.Data.Token;
+
+            if (Client.CookieContainer != null)
             {
-                content = JsonConvert.DeserializeObject(response.Content);
-                Client.CookieContainer.Add(new Cookie("gf-token-production", content.token.ToString(), "/", ".gameforge.com"));
-
-                Credentials.Token = content.token;
-                SaveCredentials();
-
-                return content.token;
+                Client.CookieContainer.Add(new Cookie("gf-token-production", token, "/", ".gameforge.com"));
             }
+
+            Credentials.Token = token;
+
+            SaveCredentials();
+
+            return token;
         }
+
         public bool SolveCaptcha(string challengeId)
         {
-            var output = OgameCaptchaSolver.OgameCaptchaSolver.SolveCaptcha(challengeId, Client);
-            return output;
+            return OgameCaptchaSolver.OgameCaptchaSolver.SolveCaptcha(challengeId, Client);
         }
 
         public void InvalidateCredentials()
@@ -323,28 +336,25 @@ namespace OgameWrapper
             Client.CookieContainer = new();
             Client.RemoveDefaultParameter("authorization");
         }
+
         public void SaveCredentials()
         {
             Database.ReplaceItem<Credentials>("credentials", Credentials, true);
         }
 
-        public bool IsInVacationMode()
+        public async Task<bool> IsInVacationMode()
         {
-            var request = new RestRequest()
-            {
-                Method = Method.GET,
-                Resource = IndexPhp
-            };
-            ExecuteRequest(request);
-            return Extractor.IsInVacationMode(LastPage);
+            RestRequest request = new(UniverseBaseUrl);
+            return await ExecuteRequest<object>(request)
+                .ContinueWith(_ => Extractor.IsInVacationMode(LastPage));
         }
 
         public string GetPlayerName()
         {
             return Extractor.GetPlayerName(LastPage);
         }
-        
-        public int GetPlayerID()
+
+        public int GetPlayerId()
         {
             return Extractor.GetPlayerID(LastPage);
         }
@@ -389,131 +399,98 @@ namespace OgameWrapper
             return Extractor.GetFleetSpeedHolding(LastPage);
         }
 
-        public PlayerClasses GetPlayerClass()
+        public async Task<PlayerClasses> GetPlayerClass()
         {
-            var request = new RestRequest()
-            {
-                Method = Method.GET,
-                Resource = IndexPhp
-            };
-            ExecuteRequest(request);
-            return Extractor.GetPlayerClass(LastPage);
+            RestRequest request = new(UniverseBaseUrl);
+            return await ExecuteRequest<object>(request)
+                .ContinueWith(_ => Extractor.GetPlayerClass(LastPage));
         }
-        public bool IsUnderAttack()
+
+        public async Task<bool> IsUnderAttack()
         {
-            var request = new RestRequest()
-            {
-                Method = Method.GET,
-                Resource = IndexPhp
-            };
-            ExecuteRequest(request);
-            return Extractor.IsUnderAttack(LastPage);
+            RestRequest request = new(UniverseBaseUrl);
+            return await ExecuteRequest<object>(request)
+                .ContinueWith(_ => Extractor.IsUnderAttack(LastPage));
         }
-        public Staff GetStaff()
+
+        public async Task<Staff> GetStaff()
         {
-            var request = new RestRequest()
-            {
-                Method = Method.GET,
-                Resource = IndexPhp
-            };
-            ExecuteRequest(request);
-            return Extractor.GetStaff(LastPage);
+            RestRequest request = new(UniverseBaseUrl);
+            return await ExecuteRequest<object>(request)
+                .ContinueWith(_ => Extractor.GetStaff(LastPage));
         }
-        public List<Celestial> GetCelestials()
+
+        public async Task<List<Celestial>> GetCelestials()
         {
-            var request = new RestRequest()
-            {
-                Method = Method.GET,
-                Resource = IndexPhp
-            };
-            ExecuteRequest(request);
-            return Extractor.GetCelestials(LastPage);
+            RestRequest request = new(UniverseBaseUrl);
+            return await ExecuteRequest<object>(request)
+                .ContinueWith(_ => Extractor.GetCelestials(LastPage));
         }
-        public Researches GetResearches()
+
+        public async Task<Researches> GetResearches()
         {
-            var request = new RestRequest()
-            {
-                Method = Method.GET,
-                Resource = IndexPhp + "page=fetchTechs&ajax=1&asJson=1"
-            };
-            ExecuteRequest(request);
-            var researches = Extractor.GetTechs(LastPage).Researches;
-            return researches;
+            RestRequest request = new(UniverseBaseUrl + "page=fetchTechs&ajax=1&asJson=1");
+            return await ExecuteRequest<object>(request)
+                .ContinueWith(_ => Extractor.GetTechs(LastPage).Researches);
         }
-        public Techs GetTechs(Celestial celestial)
+
+        public async Task<Techs> GetTechs(Celestial celestial)
         {
-            var request = new RestRequest()
-            {
-                Method = Method.GET,
-                Resource = IndexPhp + "page=fetchTechs&ajax=1&asJson=1&cp=" + celestial.ID
-            };
-            ExecuteRequest(request);
-            var techs = Extractor.GetTechs(LastPage);
-            return techs;
+            RestRequest request = new(UniverseBaseUrl + "page=fetchTechs&ajax=1&asJson=1&cp=" + celestial.ID);
+            return await ExecuteRequest<object>(request)
+                .ContinueWith(_ => Extractor.GetTechs(LastPage));
         }
-        public Buildings GetBuildings(Celestial celestial)
+
+        public async Task<Buildings> GetBuildings(Celestial celestial)
         {
-            var techs = GetTechs(celestial);
-            return techs.Buildings;
+            return await GetTechs(celestial)
+                .ContinueWith(_ => _.Result.Buildings);
         }
-        public Facilities GetFacilities(Celestial celestial)
+
+        public async Task<Facilities> GetFacilities(Celestial celestial)
         {
-            var techs = GetTechs(celestial);
-            return techs.Facilities;
+            return await GetTechs(celestial)
+                .ContinueWith(_ => _.Result.Facilities);
         }
-        public Ships GetShips(Celestial celestial)
+
+        public async Task<Ships> GetShips(Celestial celestial)
         {
-            var techs = GetTechs(celestial);
-            return techs.Ships;
+            return await GetTechs(celestial)
+                .ContinueWith(_ => _.Result.Ships);
         }
-        public Defences GetDefences(Celestial celestial)
+
+        public async Task<Defences> GetDefences(Celestial celestial)
         {
-            var techs = GetTechs(celestial);
-            return techs.Defences;
+            return await GetTechs(celestial)
+                .ContinueWith(_ => _.Result.Defences);
         }
-        public Resources GetResources(Celestial celestial)
+
+        public async Task<Resources> GetResources(Celestial celestial)
         {
-            var request = new RestRequest()
-            {
-                Method = Method.GET,
-                Resource = IndexPhp + "page=fetchResources&ajax=1&asJson=1&cp=" + celestial.ID
-            };
-            ExecuteRequest(request);
-            var res = Extractor.GetResources(LastPage);
-            return res;
+            RestRequest request = new(UniverseBaseUrl + "page=fetchResources&ajax=1&asJson=1&cp=" + celestial.ID);
+            return await ExecuteRequest<object>(request)
+                .ContinueWith(_ => Extractor.GetResources(LastPage));
         }
-        public ResourceSettings GetResourceSettings(Celestial celestial)
+
+        public async Task<ResourceSettings> GetResourceSettings(Celestial celestial)
         {
-            var request = new RestRequest()
-            {
-                Method = Method.GET,
-                Resource = IndexPhp + "page=resourceSettings&cp=" + celestial.ID
-            };
-            ExecuteRequest(request);
-            var res = Extractor.GetResourcesSettings(LastPage);
-            return res;
+            RestRequest request = new(UniverseBaseUrl + "page=resourceSettings&cp=" + celestial.ID);
+            return await ExecuteRequest<object>(request)
+                .ContinueWith(_ => Extractor.GetResourcesSettings(LastPage));
         }
-        public ResourcesProduction GetResourcesProduction(Celestial celestial)
+
+        public async Task<ResourcesProduction> GetResourcesProduction(Celestial celestial)
         {
-            var request = new RestRequest()
-            {
-                Method = Method.GET,
-                Resource = IndexPhp + "page=fetchResources&ajax=1&asJson=1&cp=" + celestial.ID
-            };
-            ExecuteRequest(request);
-            var res = Extractor.GetResourcesProduction(LastPage);
-            return res;
+            RestRequest request = new(UniverseBaseUrl + "page=fetchResources&ajax=1&asJson=1&cp=" + celestial.ID);
+            return await ExecuteRequest<object>(request)
+                .ContinueWith(_ => Extractor.GetResourcesProduction(LastPage));
         }
-        public Slots GetSlots()
+
+        public async Task<Slots> GetSlots()
         {
-            var request = new RestRequest()
-            {
-                Method = Method.GET,
-                Resource = IndexPhp + "page=ingame&component=fleetdispatch"
-            };
-            var result = ExecuteRequest(request);
-            var slots = Extractor.GetSlots(result.Content);
-            return slots;
+            RestRequest request = new(UniverseBaseUrl + "page=ingame&component=fleetdispatch");
+            return await ExecuteRequest<object>(request)
+                .ContinueWith(_ => Extractor.GetSlots(_.Result.Content));
         }
-    }    
+    }
 }
