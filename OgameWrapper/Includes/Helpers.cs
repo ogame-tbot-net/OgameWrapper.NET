@@ -11,7 +11,7 @@ namespace OgameWrapper.Includes
 {
     public static class Helpers
     {
-		public static bool ShouldSleep(DateTime time, DateTime goToSleep, DateTime wakeUp)
+        public static bool ShouldSleep(DateTime time, DateTime goToSleep, DateTime wakeUp)
 		{
 			if (time >= goToSleep)
 			{

@@ -27,6 +27,14 @@ namespace OgameWrapper.Model
 		Moon = 3,
 		DeepSpace = 4
 	}
+    public enum Lifeforms
+    {
+        None = 0,
+        Humans = 1,
+		Rocktal = 2,
+		Mecha = 3,
+        Kaelesh = 4
+	}
 	public enum Buildables
 	{
 		Null = 0,
@@ -94,7 +102,37 @@ namespace OgameWrapper.Model
 		PlasmaTechnology = 122,
 		IntergalacticResearchNetwork = 123,
 		Astrophysics = 124,
-		GravitonTechnology = 199
+		GravitonTechnology = 199,
+		ResidentialSector= 11101,
+		BiosphereFarm = 11102,
+		ResearchCentre = 11103,
+		AcademyOfSciences = 11104,
+		NeuroCalibrationCentre = 11105,
+		HighEnergySmelting = 11106,
+		FoodSilo = 11107,
+		FusionPoweredProduction = 11108,
+		Skyscraper = 11109,
+		BiotechLab = 11110,
+		Metropolis = 11111,
+		PlanetaryShield = 11112,
+		IntergalacticEnvoys = 11201,
+		HighPerformanceExtractors = 11202,
+		FusionDrives = 11203,
+		StealthFieldGenerator = 11204,
+		OrbitalDen = 11205,
+		ResearchAI = 11206,
+		HighPerformanceTerraformer = 11207,
+		EnhancedProductionTechnologies = 11208,
+		LightFighterMkII = 11209,
+		CruiserMkII = 11210,
+		ImprovedLabTechnology = 11211,
+		PlasmaTerraformer = 11212,
+		LowTemperatureDrives = 11213,
+		BomberMkII = 11214,
+		DestroyerMkII = 11215,
+		BattlecruiserMkII = 11216,
+		RobotAssistants = 11217,
+		Supercomputer = 11218,
 	}
 
 	public enum Missions

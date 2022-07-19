@@ -227,6 +227,7 @@ namespace OgameWrapper.Model
 
 	public class Planet : Celestial
 	{
+        public Lifeforms? Lifeform { get; set; }
 		public bool Administrator { get; set; }
 		public bool Inactive { get; set; }
 		public bool Vacation { get; set; }
@@ -271,7 +272,7 @@ namespace OgameWrapper.Model
 		public float RepairFactor { get; set; }
 		public int NewbieProtectionLimit { get; set; }
 		public int NewbieProtectionHigh { get; set; }
-		public long TopScore { get; set; }
+		public float TopScore { get; set; }
 		public int BonusFields { get; set; }
 		public bool DonutGalaxy { get; set; }
 		public bool DonutSystem { get; set; }
@@ -505,6 +506,51 @@ namespace OgameWrapper.Model
 			return $"R: {RoboticsFactory} S: {Shipyard} L: {ResearchLab} M: {MissileSilo} N: {NaniteFactory}";
 		}
 	}
+
+	public class LifeformBuildings : IBuildable
+	{
+		public int? ResidentialSector { get; set; }
+		public int? BiosphereFarm { get; set; }
+		public int? ResearchCentre { get; set; }
+		public int? AcademyOfSciences { get; set; }
+		public int? NeuroCalibrationCentre { get; set; }
+		public int? HighEnergySmelting { get; set; }
+		public int? FoodSilo { get; set; }
+		public int? FusionPoweredProduction { get; set; }
+		public int? Skyscraper { get; set; }
+		public int? BiotechLab { get; set; }
+		public int? Metropolis { get; set; }
+		public int? PlanetaryShield { get; set; }
+
+        public LifeformBuildings(
+            int? residentialSector = 0,
+            int? biosphereFarm = 0,
+            int? researchCentre = 0,
+            int? academyOfSciences = 0,
+            int? neuroCalibrationCentre = 0,
+            int? highEnergySmelting = 0,
+            int? foodSilo = 0,
+            int? fusionPoweredProduction = 0,
+            int? skyscraper = 0,
+            int? biotechLab = 0,
+            int? metropolis = 0,
+            int? planetaryShield = 0
+        )
+        {
+            ResidentialSector = residentialSector;
+            BiosphereFarm = biosphereFarm;
+            ResearchCentre = researchCentre;
+            AcademyOfSciences = academyOfSciences;
+            NeuroCalibrationCentre = neuroCalibrationCentre;
+            HighEnergySmelting = highEnergySmelting;
+            FoodSilo = foodSilo;
+            FusionPoweredProduction = fusionPoweredProduction;
+            Skyscraper = skyscraper;
+            BiotechLab = biotechLab;
+            Metropolis = metropolis;
+            PlanetaryShield = planetaryShield;
+        }
+    }
 
 	public interface IBuildable
 	{

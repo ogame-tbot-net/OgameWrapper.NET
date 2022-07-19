@@ -111,6 +111,25 @@ namespace OgameWrapper.Includes
             }
             return false;
         }
+        internal static string GetOgameVersion(string content)
+        {
+            var parser = new HtmlParser();
+            var doc = parser.ParseDocument(content);
+            var element = doc.QuerySelector("meta[name='ogame-version']");
+            if (element != null && element.GetAttribute("content") != null)
+            {
+                return element.GetAttribute("content");
+            }
+            return "";
+        }
+        internal static bool IsV9(string content)
+        {
+            return GetOgameVersion(content).StartsWith("9");
+        }
+        internal static bool IsV8(string content)
+        {
+            return GetOgameVersion(content).StartsWith("8");
+        }
         internal static int GetEconomySpeed(string content)
         {
             var parser = new HtmlParser();
@@ -256,24 +275,48 @@ namespace OgameWrapper.Includes
                         int.Parse(coordTokens[2]),
                         CelestialTypes.Planet
                     );
-                    planet.Diameter = int.Parse(details.Substring(details.IndexOf("<br/>") + 5, details.IndexOf("km") - (details.IndexOf("<br/>") + 5)).Replace(".", string.Empty));
-                    var fieldsString = details.Substring(details.IndexOf('(') + 1, details.IndexOf(')') - details.IndexOf('(') - 1).Replace("<span class='overmark' >", string.Empty).Replace("</span>", string.Empty);
-                    planet.Fields = new Fields
+                    if (IsV8(content)) {
+                        planet.Diameter = int.Parse(details.Substring(details.IndexOf("<br/>") + 5, details.IndexOf("km") - (details.IndexOf("<br/>") + 5)).Replace(".", string.Empty));
+                        var fieldsString = details.Substring(details.IndexOf('(') + 1, details.IndexOf(')') - details.IndexOf('(') - 1).Replace("<span class='overmark' >", string.Empty).Replace("</span>", string.Empty);
+                        planet.Fields = new Fields
+                        {
+                            Built = int.Parse(fieldsString.Substring(0, fieldsString.IndexOf('/'))),
+                            Total = int.Parse(fieldsString.Substring(fieldsString.IndexOf('/') + 1, fieldsString.Length - (fieldsString.IndexOf('/') + 1)))
+                        };
+                        var temperatureString = details.Substring(details.IndexOf("<br>") + 4, details.LastIndexOf("°C") - (details.IndexOf("<br>") + 4));
+                        var minString = temperatureString.Substring(temperatureString.IndexOf(temperatureString.First(c => c == '-' || char.IsDigit(c))), temperatureString.IndexOf("°C")).Replace("°C", string.Empty).Trim();
+                        var maxString = temperatureString.Substring(temperatureString.LastIndexOf(" "), temperatureString.Length - temperatureString.LastIndexOf(" ")).Replace("°C", string.Empty).Trim();
+                        planet.Temperature = new Temperature
+                        {
+                            Min = int.Parse(minString),
+                            Max = int.Parse(maxString)
+                        };
+                    }
+                    else if (IsV9(content))
                     {
-                        Built = int.Parse(fieldsString.Substring(0, fieldsString.IndexOf('/'))),
-                        Total = int.Parse(fieldsString.Substring(fieldsString.IndexOf('/') + 1, fieldsString.Length - (fieldsString.IndexOf('/') + 1)))
-                    };
-                    var temperatureString = details.Substring(details.IndexOf("<br>") + 4, details.LastIndexOf("°C") - (details.IndexOf("<br>") + 4));
-                    var minString = temperatureString.Substring(temperatureString.IndexOf(temperatureString.First(c => c == '-' || char.IsDigit(c))), temperatureString.IndexOf("°C")).Replace("°C", string.Empty).Trim();
-                    var maxString = temperatureString.Substring(temperatureString.LastIndexOf(" "), temperatureString.Length - temperatureString.LastIndexOf(" ")).Replace("°C", string.Empty).Trim();
-                    planet.Temperature = new Temperature
-                    {
-                        Min = int.Parse(minString),
-                        Max = int.Parse(maxString)
-                    };
+                        Lifeforms lifeform = Lifeforms.None;
+                        string lifeformString = details.Substring(details.IndexOf("<br/>") + 5, (details.NthIndexOf("<br/>", 2) - details.IndexOf("<br/>") - 5));
+                        Enum.TryParse<Lifeforms>(lifeformString.Substring(lifeformString.IndexOf(":") + 2), out lifeform);
+                        planet.Lifeform = lifeform;
+                        planet.Diameter = int.Parse(details.Substring(details.NthIndexOf("<br/>", 2) + 5, details.IndexOf("km") - (details.NthIndexOf("<br/>", 2) + 5)).Replace(".", string.Empty));
+                        var fieldsString = details.Substring(details.IndexOf('(') + 1, details.IndexOf(')') - details.IndexOf('(') - 1).Replace("<span class='overmark' >", string.Empty).Replace("</span>", string.Empty);
+                        planet.Fields = new Fields
+                        {
+                            Built = int.Parse(fieldsString.Substring(0, fieldsString.IndexOf('/'))),
+                            Total = int.Parse(fieldsString.Substring(fieldsString.IndexOf('/') + 1, fieldsString.Length - (fieldsString.IndexOf('/') + 1)))
+                        };
+                        var temperatureString = details.Substring(details.IndexOf("<br>") + 4, details.LastIndexOf("°C") - (details.IndexOf("<br>") + 4));
+                        var minString = temperatureString.Substring(temperatureString.IndexOf(temperatureString.First(c => c == '-' || char.IsDigit(c))), temperatureString.IndexOf("°C")).Replace("°C", string.Empty).Trim();
+                        var maxString = temperatureString.Substring(temperatureString.LastIndexOf(" "), temperatureString.Length - temperatureString.LastIndexOf(" ")).Replace("°C", string.Empty).Trim();
+                        planet.Temperature = new Temperature
+                        {
+                            Min = int.Parse(minString),
+                            Max = int.Parse(maxString)
+                        };
+                    }
 
-                    var moonElement = el.Children.Last();
-                    if (moonElement != planetElement)
+                    var moonElement = el.Children.FirstOrDefault(el => el.ClassList.Any(c => c == "moonlink"));
+                    if (moonElement != null)
                     {
                         var moon = new Moon();                        
                         details = moonElement.GetAttribute("title");
@@ -290,11 +333,11 @@ namespace OgameWrapper.Includes
                             CelestialTypes.Moon
                         );
                         moon.Diameter = int.Parse(details.Substring(details.IndexOf("<br>") + 4, details.IndexOf("km") - (details.IndexOf("<br>") + 4)).Replace(".", string.Empty));
-                        fieldsString = details.Substring(details.IndexOf('(') + 1, details.IndexOf(')') - details.IndexOf('(') - 1).Replace("<span class='overmark' >", string.Empty).Replace("</span>", string.Empty);
+                        var moonFieldsString = details.Substring(details.IndexOf('(') + 1, details.IndexOf(')') - details.IndexOf('(') - 1).Replace("<span class='overmark' >", string.Empty).Replace("</span>", string.Empty);
                         moon.Fields = new Fields
                         {
-                            Built = int.Parse(fieldsString.Substring(0, fieldsString.IndexOf('/'))),
-                            Total = int.Parse(fieldsString.Substring(fieldsString.IndexOf('/') + 1, fieldsString.Length - (fieldsString.IndexOf('/') + 1)))
+                            Built = int.Parse(moonFieldsString.Substring(0, moonFieldsString.IndexOf('/'))),
+                            Total = int.Parse(moonFieldsString.Substring(moonFieldsString.IndexOf('/') + 1, moonFieldsString.Length - (moonFieldsString.IndexOf('/') + 1)))
                         };
 
                         planet.Moon = moon;
