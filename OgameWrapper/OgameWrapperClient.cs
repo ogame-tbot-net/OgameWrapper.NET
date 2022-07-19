@@ -461,6 +461,16 @@ namespace OgameWrapper
             var techs = GetTechs(celestial);
             return techs.Facilities;
         }
+        public LifeformBuildings? GetLifeformBuildings(Celestial celestial)
+        {
+            var techs = GetTechs(celestial);
+            return techs.LifeformBuildings;
+        }
+        public LifeformResearches? GetLifeformResearches(Planet celestial)
+        {
+            var techs = GetTechs(celestial);
+            return techs.LifeformResearches;
+        }
         public Ships GetShips(Celestial celestial)
         {
             var techs = GetTechs(celestial);
@@ -482,7 +492,7 @@ namespace OgameWrapper
             var res = Extractor.GetResources(LastPage);
             return res;
         }
-        public ResourceSettings GetResourceSettings(Celestial celestial)
+        public ResourceSettings GetResourceSettings(Planet celestial)
         {
             var request = new RestRequest()
             {
@@ -493,7 +503,7 @@ namespace OgameWrapper
             var res = Extractor.GetResourcesSettings(LastPage);
             return res;
         }
-        public ResourcesProduction GetResourcesProduction(Celestial celestial)
+        public ResourcesProduction GetResourcesProduction(Planet celestial)
         {
             var request = new RestRequest()
             {

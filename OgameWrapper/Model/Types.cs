@@ -200,16 +200,6 @@ namespace OgameWrapper.Model
 			var resources = client.GetResources(this);
 			Resources = resources;
         }
-		public void GetResourcesProduction(OgameWrapperClient client)
-		{
-			var resourcesProduction = client.GetResourcesProduction(this);
-			ResourcesProduction = resourcesProduction;
-		}
-		public void GetResourceSettings(OgameWrapperClient client)
-        {
-			var resourcesSettings = client.GetResourceSettings(this);
-			ResourceSettings = resourcesSettings;
-        }
 	}
 
 	public class Moon : Celestial
@@ -228,7 +218,9 @@ namespace OgameWrapper.Model
 	public class Planet : Celestial
 	{
         public Lifeforms? Lifeform { get; set; }
-		public bool Administrator { get; set; }
+        public LifeformBuildings? LifeformBuildings { get; set; }
+        public LifeformResearches? LifeformResearches { get; set; }
+        public bool Administrator { get; set; }
 		public bool Inactive { get; set; }
 		public bool Vacation { get; set; }
 		public bool StrongPlayer { get; set; }
@@ -239,7 +231,26 @@ namespace OgameWrapper.Model
 		public Alliance? Alliance { get; set; }
 		public Temperature? Temperature { get; set; }
 		public Moon? Moon { get; set; }
-
+		public void GetResourcesProduction(OgameWrapperClient client)
+		{
+			var resourcesProduction = client.GetResourcesProduction(this);
+			ResourcesProduction = resourcesProduction;
+		}
+		public void GetResourceSettings(OgameWrapperClient client)
+		{
+			var resourcesSettings = client.GetResourceSettings(this);
+			ResourceSettings = resourcesSettings;
+		}
+		public void GetLifeformBuildings(OgameWrapperClient client)
+		{
+			var lifeformBuildings = client.GetLifeformBuildings(this);
+			LifeformBuildings = lifeformBuildings;
+		}
+		public void GetLifeformResearches(OgameWrapperClient client)
+		{
+			var lifeformResearches = client.GetLifeformResearches(this);
+			LifeformResearches = lifeformResearches;
+		}
 		public bool HasMines(Buildings buildings)
 		{
 			if (Buildings == null) return false;
@@ -301,19 +312,23 @@ namespace OgameWrapper.Model
 
 	public class Resources
 	{
-		public Resources(long metal = 0, long crystal = 0, long deuterium = 0, long? energy = null, long? darkmatter = null)
+		public Resources(long metal = 0, long crystal = 0, long deuterium = 0, long? energy = null, long? darkmatter = null, long? population = null, long? food = null)
 		{
 			Metal = metal;
 			Crystal = crystal;
 			Deuterium = deuterium;
 			Energy = energy;
 			Darkmatter = darkmatter;
+			Population = Population;
+			Food = Food;
 		}
 		public long Metal { get; set; }
 		public long Crystal { get; set; }
 		public long Deuterium { get; set; }
 		public long? Energy { get; set; }
-		public long? Darkmatter { get; set; }        
+		public long? Darkmatter { get; set; }
+		public long? Population { get; set; }
+		public long? Food { get; set; }
         public long ConvertedDeuterium
 		{
 			get
@@ -948,6 +963,68 @@ namespace OgameWrapper.Model
 		}
 	}
 
+	public class LifeformResearches : IBuildable
+	{
+		public int IntergalacticEnvoys { get; set; }
+		public int HighPerformanceExtractors { get; set; }
+		public int FusionDrives { get; set; }
+		public int StealthFieldGenerator { get; set; }
+		public int OrbitalDen { get; set; }
+		public int ResearchAI { get; set; }
+		public int HighPerformanceTerraformer { get; set; }
+		public int EnhancedProductionTechnologies { get; set; }
+		public int LightFighterMkII { get; set; }
+		public int CruiserMkII { get; set; }
+		public int ImprovedLabTechnology { get; set; }
+		public int PlasmaTerraformer { get; set; }
+		public int LowTemperatureDrives { get; set; }
+		public int BomberMkII { get; set; }
+		public int DestroyerMkII { get; set; }
+		public int BattlecruiserMkII { get; set; }
+		public int RobotAssistants { get; set; }
+		public int Supercomputer { get; set; }
+		public LifeformResearches(
+			int intergalacticEnvoys = 0,
+			int highPerformanceExtractors = 0,
+			int fusionDrives = 0,
+			int stealthFieldGenerator = 0,
+			int orbitalDen = 0,
+			int researchAI = 0,
+			int highPerformanceTerraformer = 0,
+			int enhancedProductionTechnologies = 0,
+			int lightFighterMkII = 0,
+			int cruiserMkII = 0,
+			int improvedLabTechnology = 0,
+			int plasmaTerraformer = 0,
+			int lowTemperatureDrives = 0,
+			int bomberMkII = 0,
+			int destroyerMkII = 0,
+			int battlecruiserMkII = 0,
+			int robotAssistants = 0,
+			int supercomputer = 0
+		)
+		{
+			IntergalacticEnvoys = intergalacticEnvoys;
+			HighPerformanceExtractors = highPerformanceExtractors;
+			FusionDrives = fusionDrives;
+			StealthFieldGenerator = stealthFieldGenerator;
+			OrbitalDen = orbitalDen;
+			ResearchAI = researchAI;
+			HighPerformanceTerraformer = highPerformanceTerraformer;
+			EnhancedProductionTechnologies = enhancedProductionTechnologies;
+			LightFighterMkII = lightFighterMkII;
+			CruiserMkII = cruiserMkII;
+			ImprovedLabTechnology = improvedLabTechnology;
+			PlasmaTerraformer = plasmaTerraformer;
+			LowTemperatureDrives = lowTemperatureDrives;
+			BomberMkII = bomberMkII;
+			DestroyerMkII = destroyerMkII;
+			BattlecruiserMkII = battlecruiserMkII;
+			RobotAssistants = robotAssistants;
+			Supercomputer = supercomputer;
+		}
+	}
+
 	public class Production
 	{
 		public int ID { get; set; }
@@ -1072,6 +1149,25 @@ namespace OgameWrapper.Model
 		public long Found { get; set; }
 	}
 
+	public class Population : BaseResource
+	{
+		public long StorageCapacity { get; set; }
+		public long SafeCapacity { get; set; }
+		public float GrowthRate { get; set; }
+		public long CapableToFeed { get; set; }
+		public long NeedFood { get; set; }
+		public float SingleFoodCOnsumption { get; set; }
+	}
+
+	public class Food : BaseResource
+	{
+		public long StorageCapacity { get; set; }
+		public float CapableToFeed { get; set; }
+		public long CurrentProduction { get; set; }
+		public long ExtraProduction { get; set; }
+		public long Consumption { get; set; }
+	}
+
 	public abstract class BaseResource
     {
 		public long Available { get; set; }
@@ -1084,12 +1180,16 @@ namespace OgameWrapper.Model
 		public Resource Deuterium { get; set; }
 		public Energy Energy { get; set; }
 		public Darkmatter Darkmatter { get; set; }
+		public Population? Population { get; set; }
+		public Food? Food { get; set; }
 		public ResourcesProduction(
 			Resource metal,
 			Resource crystal,
 			Resource deuterium,
 			Energy energy,
-			Darkmatter darkmatter
+			Darkmatter darkmatter,
+			Population population = null,
+			Food food = null
 		)
         {
 			Metal = metal;
@@ -1097,6 +1197,8 @@ namespace OgameWrapper.Model
 			Deuterium = deuterium;
 			Energy = energy;
 			Darkmatter = darkmatter;
+			Population = population;
+			Food = food;
         }
 	}
 
@@ -1107,6 +1209,8 @@ namespace OgameWrapper.Model
 		public Ships Ships { get; set; }
 		public Defences Defences { get; set; }
 		public Researches Researches { get; set; }
+        public LifeformBuildings? LifeformBuildings { get; set; }
+        public LifeformResearches? LifeformResearches { get; set; }
     }
 
 	public class AutoMinerSettings

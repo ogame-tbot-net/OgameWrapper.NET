@@ -442,6 +442,42 @@ namespace OgameWrapper.Includes
                     WeaponsTechnology = decodedJson.GetValueOrDefault(Buildables.WeaponsTechnology, 0),
                     ShieldingTechnology = decodedJson.GetValueOrDefault(Buildables.ShieldingTechnology, 0),
                     ArmourTechnology = decodedJson.GetValueOrDefault(Buildables.ArmourTechnology, 0)
+                },
+                LifeformBuildings = new LifeformBuildings
+                {
+                    ResidentialSector = decodedJson.GetValueOrDefault(Buildables.ResidentialSector, 0),
+                    BiosphereFarm = decodedJson.GetValueOrDefault(Buildables.BiosphereFarm, 0),
+                    ResearchCentre = decodedJson.GetValueOrDefault(Buildables.ResearchCentre, 0),
+                    AcademyOfSciences = decodedJson.GetValueOrDefault(Buildables.AcademyOfSciences, 0),
+                    NeuroCalibrationCentre = decodedJson.GetValueOrDefault(Buildables.NeuroCalibrationCentre, 0),
+                    HighEnergySmelting = decodedJson.GetValueOrDefault(Buildables.HighEnergySmelting, 0),
+                    FoodSilo = decodedJson.GetValueOrDefault(Buildables.FoodSilo, 0),
+                    FusionPoweredProduction = decodedJson.GetValueOrDefault(Buildables.FusionPoweredProduction, 0),
+                    Skyscraper = decodedJson.GetValueOrDefault(Buildables.Skyscraper, 0),
+                    BiotechLab = decodedJson.GetValueOrDefault(Buildables.BiotechLab, 0),
+                    Metropolis = decodedJson.GetValueOrDefault(Buildables.Metropolis, 0),
+                    PlanetaryShield = decodedJson.GetValueOrDefault(Buildables.PlanetaryShield, 0)
+                },
+                LifeformResearches = new LifeformResearches
+                {
+                    IntergalacticEnvoys = decodedJson.GetValueOrDefault(Buildables.IntergalacticEnvoys, 0),
+                    HighPerformanceExtractors = decodedJson.GetValueOrDefault(Buildables.HighPerformanceExtractors, 0),
+                    FusionDrives = decodedJson.GetValueOrDefault(Buildables.FusionDrives, 0),
+                    StealthFieldGenerator = decodedJson.GetValueOrDefault(Buildables.StealthFieldGenerator, 0),
+                    OrbitalDen = decodedJson.GetValueOrDefault(Buildables.OrbitalDen, 0),
+                    ResearchAI = decodedJson.GetValueOrDefault(Buildables.ResearchAI, 0),
+                    HighPerformanceTerraformer = decodedJson.GetValueOrDefault(Buildables.HighPerformanceTerraformer, 0),
+                    EnhancedProductionTechnologies = decodedJson.GetValueOrDefault(Buildables.EnhancedProductionTechnologies, 0),
+                    LightFighterMkII = decodedJson.GetValueOrDefault(Buildables.LightFighterMkII, 0),
+                    CruiserMkII = decodedJson.GetValueOrDefault(Buildables.CruiserMkII, 0),
+                    ImprovedLabTechnology = decodedJson.GetValueOrDefault(Buildables.ImprovedLabTechnology, 0),
+                    PlasmaTerraformer = decodedJson.GetValueOrDefault(Buildables.PlasmaTerraformer, 0),
+                    LowTemperatureDrives = decodedJson.GetValueOrDefault(Buildables.LowTemperatureDrives, 0),
+                    BomberMkII = decodedJson.GetValueOrDefault(Buildables.BomberMkII, 0),
+                    DestroyerMkII = decodedJson.GetValueOrDefault(Buildables.DestroyerMkII, 0),
+                    BattlecruiserMkII = decodedJson.GetValueOrDefault(Buildables.BattlecruiserMkII, 0),
+                    RobotAssistants = decodedJson.GetValueOrDefault(Buildables.RobotAssistants, 0),
+                    Supercomputer = decodedJson.GetValueOrDefault(Buildables.Supercomputer, 0),
                 }
             };
         }
@@ -454,7 +490,9 @@ namespace OgameWrapper.Includes
                 Crystal = resProd.Crystal.Available,
                 Deuterium = resProd.Deuterium.Available,
                 Energy = resProd.Energy.Available,
-                Darkmatter = resProd.Darkmatter.Available
+                Darkmatter = resProd.Darkmatter.Available,
+                Population = resProd.Population.Available,
+                Food = resProd.Food.Available
             };
         }
         private static string CleanString(string stringToClean)
@@ -477,42 +515,59 @@ namespace OgameWrapper.Includes
             IHtmlDocument energyTooltip = parser.ParseDocument(decodedJson.resources.energy.tooltip.ToString());
             IHtmlDocument darkmatterTooltip = parser.ParseDocument(decodedJson.resources.darkmatter.tooltip.ToString());
 
-            return new ResourcesProduction
-            (
-                new Resource
-                {
-                    Available = decodedJson.resources.metal.amount,
-                    StorageCapacity = decodedJson.resources.metal.storage,
-                    CurrentProduction = long.Parse(CleanString(metalTooltip.QuerySelector("table tr:nth-child(3) td").TextContent)),
-                    DenCapacity = long.Parse(CleanString(metalTooltip.QuerySelector("table tr:nth-child(4) td").TextContent))
-                },
-                new Resource
-                {
-                    Available = decodedJson.resources.crystal.amount,
-                    StorageCapacity = decodedJson.resources.crystal.storage,
-                    CurrentProduction = long.Parse(CleanString(crystalTooltip.QuerySelector("table tr:nth-child(3) td").TextContent)),
-                    DenCapacity = long.Parse(CleanString(crystalTooltip.QuerySelector("table tr:nth-child(4) td").TextContent))
-                },
-                new Resource
-                {
-                    Available = decodedJson.resources.deuterium.amount,
-                    StorageCapacity = decodedJson.resources.deuterium.storage,
-                    CurrentProduction = long.Parse(CleanString(deuteriumTooltip.QuerySelector("table tr:nth-child(3) td").TextContent)),
-                    DenCapacity = long.Parse(CleanString(deuteriumTooltip.QuerySelector("table tr:nth-child(4) td").TextContent))
-                },
-                new Energy
-                {
-                    Available = decodedJson.resources.energy.amount,
-                    Consumption = long.Parse(CleanString(energyTooltip.QuerySelector("table tr:nth-child(2) td").TextContent)),
-                    CurrentProduction = long.Parse(CleanString(energyTooltip.QuerySelector("table tr:nth-child(3) td").TextContent))
-                },
-                new Darkmatter
-                {
-                    Available = decodedJson.resources.darkmatter.amount,
-                    Purchased = long.Parse(CleanString(darkmatterTooltip.QuerySelector("table tr:nth-child(2) td").TextContent)),
-                    Found = long.Parse(CleanString(darkmatterTooltip.QuerySelector("table tr:nth-child(3) td").TextContent))
-                }
-            );
+            Resource metal = new Resource
+            {
+                Available = decodedJson.resources.metal.amount,
+                StorageCapacity = decodedJson.resources.metal.storage,
+                CurrentProduction = long.Parse(CleanString(metalTooltip.QuerySelector("table tr:nth-child(3) td").TextContent)),
+                DenCapacity = long.Parse(CleanString(metalTooltip.QuerySelector("table tr:nth-child(4) td").TextContent))
+            };
+            Resource crystal = new Resource
+            {
+                Available = decodedJson.resources.crystal.amount,
+                StorageCapacity = decodedJson.resources.crystal.storage,
+                CurrentProduction = long.Parse(CleanString(crystalTooltip.QuerySelector("table tr:nth-child(3) td").TextContent)),
+                DenCapacity = long.Parse(CleanString(crystalTooltip.QuerySelector("table tr:nth-child(4) td").TextContent))
+            };
+            Resource deuterium = new Resource
+            {
+                Available = decodedJson.resources.deuterium.amount,
+                StorageCapacity = decodedJson.resources.deuterium.storage,
+                CurrentProduction = long.Parse(CleanString(deuteriumTooltip.QuerySelector("table tr:nth-child(3) td").TextContent)),
+                DenCapacity = long.Parse(CleanString(deuteriumTooltip.QuerySelector("table tr:nth-child(4) td").TextContent))
+            };
+            Energy energy = new()
+            {
+                Available = decodedJson.resources.energy.amount,
+                Consumption = long.Parse(CleanString(energyTooltip.QuerySelector("table tr:nth-child(2) td").TextContent)),
+                CurrentProduction = long.Parse(CleanString(energyTooltip.QuerySelector("table tr:nth-child(3) td").TextContent))
+            };
+            Darkmatter darkmatter = new()
+            {
+                Available = decodedJson.resources.darkmatter.amount,
+                Purchased = long.Parse(CleanString(darkmatterTooltip.QuerySelector("table tr:nth-child(2) td").TextContent)),
+                Found = long.Parse(CleanString(darkmatterTooltip.QuerySelector("table tr:nth-child(3) td").TextContent))
+            };
+            Population population = new()
+            {
+                Available = (long)Math.Round(float.Parse((string)(decodedJson.resources.population.amount))),
+                StorageCapacity = decodedJson.resources.population.storage,
+                SafeCapacity = decodedJson.resources.population.safeCapacity,
+                GrowthRate = decodedJson.resources.population.growthRate,
+                CapableToFeed = decodedJson.resources.population.capableToFeed,
+                NeedFood = decodedJson.resources.population.needFood,
+                SingleFoodCOnsumption = decodedJson.resources.population.singleFoodConsumption
+            };
+            Food food = new()
+            {
+                Available = decodedJson.resources.food.amount,
+                StorageCapacity = decodedJson.resources.food.storage,
+                CapableToFeed = decodedJson.resources.food.capableToFeed,
+                CurrentProduction = decodedJson.resources.food.production,
+                ExtraProduction = decodedJson.resources.food.extraproduction,
+                Consumption = decodedJson.resources.food.consumption,
+            };
+            return new ResourcesProduction(metal, crystal, deuterium, energy, darkmatter, population, food);
         }
         internal static ResourceSettings GetResourcesSettings(string content)
         {
