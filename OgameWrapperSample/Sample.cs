@@ -1,4 +1,4 @@
-﻿
+
 using OgameWrapper.Model;
 using OgameWrapper.Includes;
 using System;
@@ -10,9 +10,37 @@ namespace OgameWrapper.Sample
     {
         private static OgameWrapperClient ogameClient;
 
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
-            Credentials credentials = new("em@i.l", "password", "en", 132);
+            var lobbyEmail = "em@i.l";
+            var lobbyPassword = "password";
+            var serverLanguage = "en";
+            var serverNumber = 132u;
+
+            LobbyClient lobbyClient = new(lobbyEmail, lobbyPassword);
+            await lobbyClient.Login();
+
+            var account = await lobbyClient.GetAccount(serverLanguage, serverNumber);
+
+            OgameClient gameClient = new(lobbyClient, account);
+            await gameClient.Login();
+
+            var playerResearches = await gameClient.GetResearches();
+
+            await lobbyClient.Logout();
+
+            // -----------
+            // old version
+            // -----------
+
+            Credentials credentials = new()
+            {
+                Email = "em@i.l",
+                Password = "password",
+                Language = "en",
+                Number = 132,
+            };
+
             ogameClient = new(credentials);
 
             var login = ogameClient.Login();
@@ -117,6 +145,9 @@ namespace OgameWrapper.Sample
                 Console.WriteLine("per celestial: " + (time2.Subtract(time1).TotalMilliseconds / count) + "ms");
                 Console.WriteLine();
 
+                // TOFIX
+
+                /*
                 time1 = DateTime.Now;
                 celestials.ForEach(c => c.GetResourceSettings(ogameClient));
                 time2 = DateTime.Now;
@@ -130,10 +161,11 @@ namespace OgameWrapper.Sample
                 Console.WriteLine("Celestial.GetResourcesProduction: " + time2.Subtract(time1).TotalMilliseconds + "ms");
                 Console.WriteLine("per celestial: " + (time2.Subtract(time1).TotalMilliseconds / count) + "ms");
                 Console.WriteLine();
+                */
             }
 
             Console.ReadLine();
         }
-            
+
     }
 }

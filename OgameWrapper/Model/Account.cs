@@ -1,20 +1,21 @@
-﻿using Newtonsoft.Json;
-using RestSharp;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace OgameWrapper.Model
 {
     public class Credentials
     {
-        public string Email { get; set; }
-        public string Password { get; set; }
-        public string Language { get; set; }
-        public int Number { get; set; }
-        public string? Token { get; set; }
+        public string Email { get; set; } = string.Empty;
+
+        public string Password { get; set; } = string.Empty;
+
+        public string Language { get; set; } = string.Empty;
+
+        public int Number { get; set; } = 0;
+
+        public string? Token { get; set; } = null;
+
+        public Credentials() { }
+
         public Credentials(string email, string password, string language, int number)
         {
             Email = email;
