@@ -37,13 +37,26 @@ namespace OgameWrapper
         public static Page FetchCelestialTechs = new("/game/index.php?page=fetchTechs&ajax=1&cp={0}");
     }
 
+    internal class CacheEntry
+    {
+        public Uri Uri { get; set; } = new("about:blank");
+
+        public DateTime Date { get; set; } = DateTime.MinValue;
+
+        public IRestResponse<object> Response { get; set; } = new RestResponse<object>();
+    }
+
     public class OgameClient
     {
+        private const uint CACHE_TIME_SECONDS = 60;
+
         private Account Account { get; init; }
 
         private LobbyClient LobbyClient { get; init; }
 
         private RestClient HttpClient { get; init; }
+
+        private Dictionary<string, CacheEntry> Cache { get; init; }
 
         private string ServerHost
         {
@@ -60,6 +73,8 @@ namespace OgameWrapper
 
             HttpClient = ServiceFactory.HttpClient;
             HttpClient.BaseUrl = new($"https://{ServerHost}");
+
+            Cache = new();
         }
 
         public async Task Login()
@@ -82,208 +97,231 @@ namespace OgameWrapper
             }
         }
 
-        public async Task<bool> IsInVacationMode()
+        public async Task<bool> IsInVacationMode(bool useCache = true)
         {
             RestRequest request = new(Page.Overview.Value);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.IsInVacationMode(response.Content);
         }
 
-        public async Task<string> GetPlayerName()
+        public async Task<string> GetPlayerName(bool useCache = true)
         {
             RestRequest request = new(Page.Overview.Value);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetPlayerName(response.Content);
         }
 
-        public async Task<int> GetPlayerId()
+        public async Task<int> GetPlayerId(bool useCache = true)
         {
             RestRequest request = new(Page.Overview.Value);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetPlayerID(response.Content);
         }
 
-        public async Task<string> GetServerName()
+        public async Task<string> GetServerName(bool useCache = true)
         {
             RestRequest request = new(Page.Overview.Value);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetServerName(response.Content);
         }
 
-        public async Task<int> GetCurrentCelestialId()
+        public async Task<int> GetCurrentCelestialId(bool useCache = true)
         {
             RestRequest request = new(Page.Overview.Value);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetCurrentCelestialID(response.Content);
         }
 
-        public async Task<string> GetCurrentCelestialName()
+        public async Task<string> GetCurrentCelestialName(bool useCache = true)
         {
             RestRequest request = new(Page.Overview.Value);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetCurrentCelestialName(response.Content);
         }
 
-        public async Task<Coordinate?> GetCurrentCelestialCoordinates()
+        public async Task<Coordinate?> GetCurrentCelestialCoordinates(bool useCache = true)
         {
             RestRequest request = new(Page.Overview.Value);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetCurrentCelestialCoordinates(response.Content);
         }
 
-        public async Task<int> GetEconomySpeed()
+        public async Task<int> GetEconomySpeed(bool useCache = true)
         {
             RestRequest request = new(Page.Overview.Value);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetEconomySpeed(response.Content);
         }
 
-        public async Task<int> GetFleetSpeedPeaceful()
+        public async Task<int> GetFleetSpeedPeaceful(bool useCache = true)
         {
             RestRequest request = new(Page.Overview.Value);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetFleetSpeedPeaceful(response.Content);
         }
 
-        public async Task<int> GetFleetSpeedWar()
+        public async Task<int> GetFleetSpeedWar(bool useCache = true)
         {
             RestRequest request = new(Page.Overview.Value);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetFleetSpeedWar(response.Content);
         }
 
-        public async Task<int> GetFleetSpeedHolding()
+        public async Task<int> GetFleetSpeedHolding(bool useCache = true)
         {
             RestRequest request = new(Page.Overview.Value);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetFleetSpeedHolding(response.Content);
         }
 
-        public async Task<PlayerClasses> GetPlayerClass()
+        public async Task<PlayerClasses> GetPlayerClass(bool useCache = true)
         {
             RestRequest request = new(Page.Overview.Value);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetPlayerClass(response.Content);
         }
 
-        public async Task<bool> IsUnderAttack()
+        public async Task<bool> IsUnderAttack(bool useCache = true)
         {
             RestRequest request = new(Page.Overview.Value);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.IsUnderAttack(response.Content);
         }
 
-        public async Task<Staff> GetStaff()
+        public async Task<Staff> GetStaff(bool useCache = true)
         {
             RestRequest request = new(Page.Overview.Value);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetStaff(response.Content);
         }
 
-        public async Task<List<Celestial>> GetCelestials()
+        public async Task<List<Celestial>> GetCelestials(bool useCache = true)
         {
             RestRequest request = new(Page.Overview.Value);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetCelestials(response.Content);
         }
 
-        public async Task<Researches> GetResearches()
+        public async Task<Researches> GetResearches(bool useCache = true)
         {
             RestRequest request = new(Page.FetchTechs.Value);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetTechs(response.Content).Researches;
         }
 
-        public async Task<Techs> GetTechs(Celestial celestial)
+        public async Task<Techs> GetTechs(Celestial celestial, bool useCache = true)
         {
             var url = string.Format(Page.FetchCelestialTechs.Value, celestial.ID);
             RestRequest request = new(url);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetTechs(response.Content);
         }
 
-        public async Task<Buildings> GetBuildings(Celestial celestial)
+        public async Task<Buildings> GetBuildings(Celestial celestial, bool useCache = true)
         {
-            var techs = await GetTechs(celestial);
+            var techs = await GetTechs(celestial, useCache);
             return techs.Buildings;
         }
 
-        public async Task<Facilities> GetFacilities(Celestial celestial)
+        public async Task<Facilities> GetFacilities(Celestial celestial, bool useCache = true)
         {
-            var techs = await GetTechs(celestial);
+            var techs = await GetTechs(celestial, useCache);
             return techs.Facilities;
         }
 
-        public async Task<LifeformBuildings?> GetLifeformBuildings(Celestial celestial)
+        public async Task<LifeformBuildings?> GetLifeformBuildings(Celestial celestial, bool useCache = true)
         {
-            var techs = await GetTechs(celestial);
+            var techs = await GetTechs(celestial, useCache);
             return techs.LifeformBuildings;
         }
 
-        public async Task<LifeformResearches?> GetLifeformResearches(Planet planet)
+        public async Task<LifeformResearches?> GetLifeformResearches(Planet planet, bool useCache = true)
         {
-            var techs = await GetTechs(planet);
+            var techs = await GetTechs(planet, useCache);
             return techs.LifeformResearches;
         }
 
-        public async Task<Ships> GetShips(Celestial celestial)
+        public async Task<Ships> GetShips(Celestial celestial, bool useCache = true)
         {
-            var techs = await GetTechs(celestial);
+            var techs = await GetTechs(celestial, useCache);
             return techs.Ships;
         }
 
-        public async Task<Defences> GetDefences(Celestial celestial)
+        public async Task<Defences> GetDefences(Celestial celestial, bool useCache = true)
         {
-            var techs = await GetTechs(celestial);
+            var techs = await GetTechs(celestial, useCache);
             return techs.Defences;
         }
 
-        public async Task<Resources> GetResources(Celestial celestial)
+        public async Task<Resources> GetResources(Celestial celestial, bool useCache = true)
         {
             var url = string.Format(Page.FetchCelestialResources.Value, celestial.ID);
             RestRequest request = new(url);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetResources(response.Content);
         }
 
-        public async Task<ResourceSettings> GetResourceSettings(Celestial celestial)
+        public async Task<ResourceSettings> GetResourceSettings(Celestial celestial, bool useCache = true)
         {
             var url = string.Format(Page.ResourceSettings.Value, celestial.ID);
             RestRequest request = new(url);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetResourcesSettings(response.Content);
         }
 
-        public async Task<ResourcesProduction> GetResourcesProduction(Celestial celestial)
+        public async Task<ResourcesProduction> GetResourcesProduction(Celestial celestial, bool useCache = true)
         {
             var url = string.Format(Page.FetchCelestialResources.Value, celestial.ID);
             RestRequest request = new(url);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetResourcesProduction(response.Content);
         }
 
-        public async Task<Slots> GetSlots()
+        public async Task<Slots> GetSlots(bool useCache = true)
         {
             RestRequest request = new(Page.FleetDispatch.Value);
-            var response = await ExecuteRequestAsync(request);
+            var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetSlots(response.Content);
         }
 
-        private Task<IRestResponse<object>> ExecuteRequestAsync(IRestRequest request)
+        private Task<IRestResponse<object>> ExecuteRequestAsync(IRestRequest request, bool useCache = false)
         {
-            return ExecuteRequestAsync<object>(request);
+            return ExecuteRequestAsync<object>(request, useCache);
         }
 
-        private async Task<IRestResponse<T>> ExecuteRequestAsync<T>(IRestRequest request)
+        private async Task<IRestResponse<T>> ExecuteRequestAsync<T>(IRestRequest request, bool useCache = false)
         {
-            var response = await HttpClient.ExecuteAsync<T>(request);
+            var uri = HttpClient.BuildUri(request);
 
-            var uri = response.ResponseUri;
-            if (uri.Host != ServerHost || response.StatusCode == HttpStatusCode.Forbidden || response.StatusCode == HttpStatusCode.Unauthorized)
+            if (useCache && request.Method == Method.GET)
+            {
+                if (Cache.ContainsKey(uri.PathAndQuery))
+                {
+                    var cachedResponse = Cache[uri.PathAndQuery];
+                    if (cachedResponse.Date.AddSeconds(CACHE_TIME_SECONDS) > DateTime.UtcNow)
+                    {
+                        return (IRestResponse<T>) cachedResponse.Response;
+                    }
+                }
+            }
+
+            var response = await HttpClient.ExecuteAsync<T>(request);
+            var responseUri = response.ResponseUri;
+            if (responseUri.Host != ServerHost || response.StatusCode == HttpStatusCode.Forbidden || response.StatusCode == HttpStatusCode.Unauthorized)
             {
                 await Login();
 
                 return await ExecuteRequestAsync<T>(request);
+            }
+
+            if (useCache && request.Method == Method.GET)
+            {
+                Cache[uri.PathAndQuery] = new()
+                {
+                    Uri = uri,
+                    Date = DateTime.UtcNow,
+                    Response = (IRestResponse<object>) response,
+                };
             }
 
             return response;
