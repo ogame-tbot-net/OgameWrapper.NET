@@ -167,37 +167,37 @@ namespace OgameWrapper.Model
 			}
 			return output;
 		}
-		public void GetTechs(OgameWrapperClient client)
+		public async Task GetTechs(OgameClient client)
 		{
-			var techs = client.GetTechs(this);
+			var techs = await client.GetTechs(this);
 			Buildings = techs.Buildings;
 			Facilities = techs.Facilities;
 			Ships = techs.Ships;
 			Defences = techs.Defences;
 		}
-		public void GetBuildings(OgameWrapperClient client)
+		public async Task GetBuildings(OgameClient client)
 		{
-			var techs = client.GetTechs(this);
+			var techs = await client.GetTechs(this);
 			Buildings = techs.Buildings;
 		}
-		public void GetFacilities(OgameWrapperClient client)
+		public async Task GetFacilities(OgameClient client)
 		{
-			var techs = client.GetTechs(this);
+			var techs = await client.GetTechs(this);
 			Facilities = techs.Facilities;
 		}
-		public void GetShips(OgameWrapperClient client)
+		public async Task GetShips(OgameClient client)
 		{
-			var techs = client.GetTechs(this);
+			var techs = await client.GetTechs(this);
 			Ships = techs.Ships;
 		}
-		public void GetDefences(OgameWrapperClient client)
+		public async Task GetDefences(OgameClient client)
 		{
-			var techs = client.GetTechs(this);
+			var techs = await client.GetTechs(this);
 			Defences = techs.Defences;
 		}
-		public void GetResources(OgameWrapperClient client)
+		public async Task GetResources(OgameClient client)
         {
-			var resources = client.GetResources(this);
+			var resources = await client.GetResources(this);
 			Resources = resources;
         }
 	}
@@ -231,24 +231,24 @@ namespace OgameWrapper.Model
 		public Alliance? Alliance { get; set; }
 		public Temperature? Temperature { get; set; }
 		public Moon? Moon { get; set; }
-		public void GetResourcesProduction(OgameWrapperClient client)
+		public async Task GetResourcesProduction(OgameClient client)
 		{
-			var resourcesProduction = client.GetResourcesProduction(this);
+			var resourcesProduction = await client.GetResourcesProduction(this);
 			ResourcesProduction = resourcesProduction;
 		}
-		public void GetResourceSettings(OgameWrapperClient client)
+		public async Task GetResourceSettings(OgameClient client)
 		{
-			var resourcesSettings = client.GetResourceSettings(this);
+			var resourcesSettings = await client.GetResourceSettings(this);
 			ResourceSettings = resourcesSettings;
 		}
-		public void GetLifeformBuildings(OgameWrapperClient client)
+		public async Task GetLifeformBuildings(OgameClient client)
 		{
-			var lifeformBuildings = client.GetLifeformBuildings(this);
+			var lifeformBuildings = await client.GetLifeformBuildings(this);
 			LifeformBuildings = lifeformBuildings;
 		}
-		public void GetLifeformResearches(OgameWrapperClient client)
+		public async Task GetLifeformResearches(OgameClient client)
 		{
-			var lifeformResearches = client.GetLifeformResearches(this);
+			var lifeformResearches = await client.GetLifeformResearches(this);
 			LifeformResearches = lifeformResearches;
 		}
 		public bool HasMines(Buildings buildings)
