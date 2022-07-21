@@ -60,7 +60,16 @@ namespace OgameWrapper
 
         private static readonly List<string> ForwardHeaders = new()
         {
-            "x-requested-with"
+            "x-requested-with",
+        };
+
+        private static readonly List<string> ServedUrls = new()
+        {
+            "/game/",
+            "/cdn/",
+            "/assets/",
+            "/headerCache/",
+            "/favicon.ico",
         };
 
         public string ServerHost
@@ -110,6 +119,11 @@ namespace OgameWrapper
             }
 
             var uri = inputRequest.Url;
+            if (!ServedUrls.Any(url => uri.PathAndQuery.StartsWith(url)))
+            {
+                throw new Exception($"Unsupported uri : {uri.PathAndQuery}");
+            }
+
             var method = StringMethodToMethod(inputRequest.HttpMethod);
 
             RestRequest request = new(uri.PathAndQuery, method);
