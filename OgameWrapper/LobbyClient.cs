@@ -226,6 +226,21 @@ namespace OgameWrapper
 
         private string Password { get; init; }
 
+        private bool Pioneers { get; init; }
+
+        private string BaseUrl
+        {
+            get
+            {
+                if (Pioneers)
+                {
+                    return "https://lobby-pioneers.ogame.gameforge.com";
+                }
+
+                return "https://lobby.ogame.gameforge.com";
+            }
+        }
+
         public bool IsLoggedIn
         {
             get
@@ -234,10 +249,11 @@ namespace OgameWrapper
             }
         }
 
-        public LobbyClient(string email, string password)
+        public LobbyClient(string email, string password, bool pioneers = false)
         {
             Email = email;
             Password = password;
+            Pioneers = pioneers;
 
             HttpClient = ServiceFactory.HttpClient;
             Session = new();
@@ -250,7 +266,7 @@ namespace OgameWrapper
                 return;
             }
 
-            RestRequest request = new("https://lobby.ogame.gameforge.com/");
+            RestRequest request = new(BaseUrl);
 
             var response = await HttpClient.ExecuteAsync(request);
             if (response.StatusCode != HttpStatusCode.OK)
@@ -269,7 +285,7 @@ namespace OgameWrapper
                 return;
             }
 
-            RestRequest logoutRequest = new("https://lobby.ogame.gameforge.com/api/users/me/logout", Method.PUT);
+            RestRequest logoutRequest = new($"{BaseUrl}/api/users/me/logout", Method.PUT);
 
             var logoutResponse = await ExecuteAuthenticatedAsync<object>(logoutRequest);
             if (logoutResponse.StatusCode != HttpStatusCode.OK)
@@ -290,8 +306,8 @@ namespace OgameWrapper
 
         public async Task<string> GetServerToken(Account account)
         {
-            RestRequest request = new("https://lobby.ogame.gameforge.com/api/users/me/loginLink");
-            request.AddHeader("Referer", "https://lobby.ogame.gameforge.com/en_GB/hub");
+            RestRequest request = new($"{BaseUrl}/api/users/me/loginLink");
+            request.AddHeader("Referer", $"{BaseUrl}/en_GB/hub");
 
             request.AddParameter("id", account.GameAccountId);
             request.AddParameter("server[language]", account.Server.Language);
@@ -317,8 +333,8 @@ namespace OgameWrapper
 
         public async Task<List<Server>> GetServers()
         {
-            var request = new RestRequest("https://lobby.ogame.gameforge.com/api/servers");
-            request.AddHeader("Referer", "https://lobby.ogame.gameforge.com/en_GB/");
+            var request = new RestRequest($"{BaseUrl}/api/servers");
+            request.AddHeader("Referer", $"{BaseUrl}/en_GB/");
 
             var response = await HttpClient.ExecuteAsync<List<Server>>(request);
             if (response.StatusCode != HttpStatusCode.OK)
@@ -349,8 +365,8 @@ namespace OgameWrapper
 
         public async Task<Me> GetMe()
         {
-            var request = new RestRequest("https://lobby.ogame.gameforge.com/api/users/me");
-            request.AddHeader("Referer", "https://lobby.ogame.gameforge.com/en_GB/hub");
+            var request = new RestRequest($"{BaseUrl}/api/users/me");
+            request.AddHeader("Referer", $"{BaseUrl}/en_GB/hub");
 
             var response = await ExecuteAuthenticatedAsync<Me>(request);
             if (response.StatusCode != HttpStatusCode.OK)
@@ -363,8 +379,8 @@ namespace OgameWrapper
 
         public async Task<List<Account>> GetAccounts()
         {
-            var request = new RestRequest("https://lobby.ogame.gameforge.com/api/users/me/accounts");
-            request.AddHeader("Referer", "https://lobby.ogame.gameforge.com/en_GB/hub");
+            var request = new RestRequest($"{BaseUrl}/api/users/me/accounts");
+            request.AddHeader("Referer", $"{BaseUrl}/en_GB/hub");
 
             var response = await ExecuteAuthenticatedAsync<List<Account>>(request);
             if (response.StatusCode != HttpStatusCode.OK)
@@ -379,7 +395,7 @@ namespace OgameWrapper
             var configuration = await GetConfiguration();
 
             RestRequest request = new("https://gameforge.com/api/v1/auth/thin/sessions", Method.POST);
-            request.AddHeader("Referer", "https://lobby.ogame.gameforge.com/");
+            request.AddHeader("Referer", BaseUrl);
             request.AddHeader("Content-Type", "application/json");
 
             LobbySessionRequest requestBody = new()
@@ -426,7 +442,7 @@ namespace OgameWrapper
 
         private async Task<Configuration> GetConfiguration()
         {
-            RestRequest request = new("https://lobby.ogame.gameforge.com/config/configuration.js");
+            RestRequest request = new($"{BaseUrl}/config/configuration.js");
             var response = await HttpClient.ExecuteAsync(request);
             if (response.StatusCode != HttpStatusCode.OK)
             {

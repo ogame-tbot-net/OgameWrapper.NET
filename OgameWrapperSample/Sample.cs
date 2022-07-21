@@ -6,12 +6,13 @@ namespace OgameWrapper.Sample
         {
             var lobbyEmail = "em@i.l";
             var lobbyPassword = "password";
+            var pioneers = true;
             var serverLanguage = "en";
             var serverNumber = 132u;
 
             Console.WriteLine("Connecting to lobby...");
 
-            LobbyClient lobbyClient = new(lobbyEmail, lobbyPassword);
+            LobbyClient lobbyClient = new(lobbyEmail, lobbyPassword, pioneers);
             await lobbyClient.Login();
 
             Console.WriteLine("Connected to lobby!");
