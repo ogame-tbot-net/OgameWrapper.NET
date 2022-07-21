@@ -352,7 +352,7 @@ namespace OgameWrapper
 
             var response = await HttpClient.ExecuteAsync<T>(request);
             var responseUri = response.ResponseUri;
-            if (responseUri.Host != ServerHost || response.StatusCode == HttpStatusCode.Forbidden || response.StatusCode == HttpStatusCode.Unauthorized)
+            if (responseUri.Host != ServerHost && (response.StatusCode == HttpStatusCode.Forbidden || response.StatusCode == HttpStatusCode.Unauthorized))
             {
                 await Login();
 
