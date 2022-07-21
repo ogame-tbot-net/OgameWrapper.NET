@@ -1,5 +1,5 @@
 using NUnit.Framework;
-using OgameWrapper.Model;
+using System.Threading.Tasks;
 
 namespace OgameWrapper.Tests
 {
@@ -12,11 +12,12 @@ namespace OgameWrapper.Tests
         }
 
         [Test]
-        public void TestLogin()
+        public async Task TestLogin()
         {
-            Credentials credentials = new("em@i.l", "password", "en", 132);
-            OgameWrapperClient ogameClient = new(credentials);
-            Assert.True(ogameClient.Login());
+            var email = "em@i.l";
+            var password = "password";
+            LobbyClient lobbyClient = new(email, password);
+            await lobbyClient.Login();
         }
     }
 }
