@@ -406,7 +406,7 @@ namespace OgameWrapper
                 }
 
                 string challengeId = (string)header.Value;
-                challengeId = challengeId.Substring(0, challengeId.IndexOf(';'));
+                challengeId = challengeId.Split(';')[0];
                 var solved = OgameCaptchaSolver.OgameCaptchaSolver.SolveCaptcha(challengeId, HttpClient);
                 if (!solved)
                 {
