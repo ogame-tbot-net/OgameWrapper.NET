@@ -156,7 +156,7 @@ namespace OgameCaptchaSolver
 
         private static string GetImageHash(byte[] picture)
         {
-            Image image = Image.Load(picture);
+            using Image image = Image.Load(picture);
             using MemoryStream ms = new();
             image.SaveAsPng(ms);
             using var md5 = MD5.Create();

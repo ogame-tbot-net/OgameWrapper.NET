@@ -405,7 +405,8 @@ namespace OgameWrapper
                     throw new Exception("Cannot get catpcha challenge id.");
                 }
 
-                var challengeId = (string)header.Value;
+                string challengeId = (string)header.Value;
+                challengeId = challengeId.Substring(0, challengeId.IndexOf(';'));
                 var solved = OgameCaptchaSolver.OgameCaptchaSolver.SolveCaptcha(challengeId, HttpClient);
                 if (!solved)
                 {

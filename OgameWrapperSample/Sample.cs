@@ -34,7 +34,7 @@ namespace OgameWrapper.Sample
 
             Console.WriteLine("Stating proxy...");
 
-            OgameProxy proxy = new(1337);
+            OgameProxy proxy = new("localhost", 1337);
             proxy.Start(ogameClient);
 
             Console.WriteLine("Proxy started!");

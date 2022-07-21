@@ -15,74 +15,81 @@ namespace OgameWrapper
 
         private const string COOKIE_BANNER_NAME = "gf-cookie-consent-4449562312";
         private const string COOKIE_BANNER_VALUE = "|0|1";
-
-        public OgameProxy(ushort port)
+        
+        public OgameProxy(string host = "localhost", int port = 1337)
         {
-            Listener.Prefixes.Add($"http://*:{port}/");
+            Listener.Prefixes.Add($"http://{host}:{port}/");
         }
 
         public async void Start(OgameClient ogameClient)
         {
-            Listener.Start();
-
-            while (true)
+            try
             {
-                var context = await Listener.GetContextAsync();
+                Listener.Start();
 
-                using BinaryWriter stream = new(context.Response.OutputStream);
-
-                var response = await ogameClient.ExecuteRequest(context.Request);
-
-                if (response.ProtocolVersion != null)
+                while (true)
                 {
-                    context.Response.ProtocolVersion = response.ProtocolVersion;
-                }
-                context.Response.StatusCode = (int)response.StatusCode;
-                context.Response.ContentType = response.ContentType;
-                if (response.ContentLength > 0)
-                {
-                    context.Response.ContentLength64 = response.ContentLength;
-                }
+                    var context = await Listener.GetContextAsync();
 
-                WebHeaderCollection headers = new();
-                foreach (var header in response.Headers)
-                {
-                    if (string.IsNullOrEmpty(header.Name) || string.IsNullOrEmpty((string?)header.Value))
+                    using BinaryWriter stream = new(context.Response.OutputStream);
+
+                    var response = await ogameClient.ExecuteRequest(context.Request);
+
+                    if (response.ProtocolVersion != null)
                     {
-                        continue;
+                        context.Response.ProtocolVersion = response.ProtocolVersion;
+                    }
+                    context.Response.StatusCode = (int)response.StatusCode;
+                    context.Response.ContentType = response.ContentType;
+                    if (response.ContentLength > 0)
+                    {
+                        context.Response.ContentLength64 = response.ContentLength;
                     }
 
-                    headers.Add(header.Name, header.Value.ToString());
-                }
-                context.Response.Headers = headers;
-
-                // Remove GRPD cookie banner
-                if (!context.Request.Cookies.Any(cookie => cookie.Name == COOKIE_BANNER_NAME))
-                {
-                    context.Response.SetCookie(new(COOKIE_BANNER_NAME, COOKIE_BANNER_VALUE, "/"));
-                }
-
-                var responseBytes = response.RawBytes;
-
-                // Replace server host with proxy host
-                if (response.Content.Contains(ogameClient.ServerHost))
-                {
-                    if (context.Request.Url != null)
+                    WebHeaderCollection headers = new();
+                    foreach (var header in response.Headers)
                     {
-                        var newHost = context.Request.Url.Authority;
-                        var responseText = response.Content
-                            .Replace(ogameClient.ServerHost, newHost)
-                            .Replace($"https://{newHost}", $"http://{newHost}")
-                            .Replace($"https:\\/\\/{newHost}", $"http:\\/\\/{newHost}");
+                        if (string.IsNullOrEmpty(header.Name) || string.IsNullOrEmpty((string?)header.Value))
+                        {
+                            continue;
+                        }
 
-                        responseBytes = Encoding.UTF8.GetBytes(responseText);
+                        headers.Add(header.Name, header.Value.ToString());
                     }
-                }
+                    context.Response.Headers = headers;
 
-                // TODO : make stream async
-                stream.Write(responseBytes);
-                stream.Flush();
-                stream.Close();
+                    // Remove GRPD cookie banner
+                    if (!context.Request.Cookies.Any(cookie => cookie.Name == COOKIE_BANNER_NAME))
+                    {
+                        context.Response.SetCookie(new(COOKIE_BANNER_NAME, COOKIE_BANNER_VALUE, "/"));
+                    }
+
+                    var responseBytes = response.RawBytes;
+
+                    // Replace server host with proxy host
+                    if (response.Content.Contains(ogameClient.ServerHost))
+                    {
+                        if (context.Request.Url != null)
+                        {
+                            var newHost = context.Request.Url.Authority;
+                            var responseText = response.Content
+                                .Replace(ogameClient.ServerHost, newHost)
+                                .Replace($"https://{newHost}", $"http://{newHost}")
+                                .Replace($"https:\\/\\/{newHost}", $"http:\\/\\/{newHost}");
+
+                            responseBytes = Encoding.UTF8.GetBytes(responseText);
+                        }
+                    }
+
+                    // TODO : make stream async
+                    stream.Write(responseBytes);
+                    stream.Flush();
+                    stream.Close();
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
             }
         }
     }
