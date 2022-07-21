@@ -41,6 +41,8 @@ namespace OgameWrapper.Sample
 
             Console.WriteLine("Connected to server!");
 
+            // await ogameClient.SelectInitialPlayerClass(Model.PlayerClasses.General);
+
             // var researches = await ogameClient.GetResearches();
             // Console.WriteLine(researches);
 

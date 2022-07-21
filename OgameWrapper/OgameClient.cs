@@ -35,6 +35,8 @@ namespace OgameWrapper
         public static Page FetchCelestialResources = new("/game/index.php?page=fetchResources&ajax=1&cp={0}");
         public static Page FetchTechs = new("/game/index.php?page=fetchTechs&ajax=1");
         public static Page FetchCelestialTechs = new("/game/index.php?page=fetchTechs&ajax=1&cp={0}");
+
+        public static Page CharactersClassSelection = new("/game/index.php?page=ingame&component=characterclassselection&action=selectClass&ajax=1&asJson=1");
     }
 
     internal class CacheEntry
@@ -44,6 +46,90 @@ namespace OgameWrapper
         public DateTime Date { get; set; } = DateTime.MinValue;
 
         public IRestResponse<object> Response { get; set; } = new RestResponse<object>();
+
+    }
+
+    internal class CharacterClassSelectionResponse
+    {
+        internal class CharacterClass
+        {
+            internal class CharacterClassBonus
+            {
+                public string Name { get; init; } = string.Empty;
+
+                public string Icon { get; init; } = string.Empty;
+
+                public string LongDescription { get; init; } = string.Empty;
+
+                public string ShortDescription { get; init; } = string.Empty;
+            }
+
+            internal class CharacterClassShip
+            {
+                public string Name { get; init; } = string.Empty;
+
+                public string LongDescription { get; init; } = string.Empty;
+
+                public string ShortDescription { get; init; } = string.Empty;
+            }
+
+            internal class CharacterClassButton
+            {
+                public string Type { get; init; } = string.Empty;
+
+                public ulong Darkmatter { get; init; } = 0;
+
+                public string Label { get; init; } = string.Empty;
+
+                public string Link { get; init; } = string.Empty;
+            }
+
+            public PlayerClasses Id { get; init; } = PlayerClasses.NoClass;
+
+            public string Name { get; init; } = string.Empty;
+
+            public ulong Price { get; init; } = 0;
+
+            public string Icon { get; init; } = string.Empty;
+
+            public CharacterClassShip Ship { get; init; } = new();
+
+            public bool IsActive { get; init; } = false;
+
+            public List<CharacterClassBonus> Boni { get; init; } = new();
+
+            public string TitleText { get; init; } = string.Empty;
+
+            public bool IsSelected { get; init; } = false;
+
+            public string InfoLink { get; init; } = string.Empty;
+
+            public string SelectionLink { get; init; } = string.Empty;
+
+            public string SelectLink { get; init; } = string.Empty;
+
+            public string DeselectLink { get; init; } = string.Empty;
+
+            public CharacterClassButton Button { get; init; } = new();
+        }
+
+        public string RedirectUrl { get; init; } = string.Empty;
+
+        public string Status { get; init; } = string.Empty;
+
+        public string Message { get; init; } = string.Empty;
+
+        public List<object> Components { get; init; } = new(); // TODO
+
+        public List<CharacterClass> CharacterClasses { get; init; } = new();
+
+        public string PremiumLink { get; init; } = string.Empty;
+
+        public PlayerClasses ChracterClassId { get; init; } = PlayerClasses.NoClass;
+
+        public string Token { get; init; } = string.Empty;
+
+        public string NewAjaxToken { get; init; } = string.Empty;
     }
 
     public class OgameClient
@@ -341,6 +427,25 @@ namespace OgameWrapper
             RestRequest request = new(Page.FleetDispatch.Value);
             var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetSlots(response.Content);
+        }
+
+        public async Task SelectInitialPlayerClass(PlayerClasses playerClass)
+        {
+            RestRequest request = new(Page.CharactersClassSelection.Value, Method.POST);
+            request.AddHeader("Referer", $"https://{ServerHost}/game/index.php?page=ingame&component=characterclassselection");
+            request.AddParameter("characterClassId", (int)playerClass, ParameterType.QueryString);
+            request.AddHeader("X-Requested-With", "XMLHttpRequest");
+
+            var response = await ExecuteRequestAsync<CharacterClassSelectionResponse>(request);
+            if (response.StatusCode != HttpStatusCode.OK)
+            {
+                throw new Exception($"Failed to select player class {playerClass}");
+            }
+
+            if (response.Data.Status != "success")
+            {
+                throw new Exception($"Failed to select player class {playerClass}");
+            }
         }
 
         private Task<IRestResponse<object>> ExecuteRequestAsync(IRestRequest request, bool useCache = false)
