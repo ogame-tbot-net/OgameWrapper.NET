@@ -1,4 +1,4 @@
-﻿using OgameWrapper.Includes;
+using OgameWrapper.Includes;
 using OgameWrapper.Model;
 using OgameWrapper.Services;
 using RestSharp;
@@ -58,7 +58,12 @@ namespace OgameWrapper
 
         private Dictionary<string, CacheEntry> Cache { get; init; }
 
-        private string ServerHost
+        private static readonly List<string> ForwardHeaders = new()
+        {
+            "x-requested-with"
+        };
+
+        public string ServerHost
         {
             get
             {
@@ -95,6 +100,46 @@ namespace OgameWrapper
             {
                 throw new Exception($"Unable to login to server : Invalid host {uri.Host}.");
             }
+        }
+
+        public async Task<IRestResponse> ExecuteRequest(HttpListenerRequest inputRequest)
+        {
+            if (inputRequest.Url == null)
+            {
+                return new RestResponse();
+            }
+
+            var uri = inputRequest.Url;
+            var method = StringMethodToMethod(inputRequest.HttpMethod);
+
+            RestRequest request = new(uri.PathAndQuery, method);
+
+            if (request.Method == Method.POST && inputRequest.ContentType != null)
+            {
+                using StreamReader stream = new(inputRequest.InputStream, inputRequest.ContentEncoding);
+                var body = await stream.ReadToEndAsync();
+                request.AddParameter(inputRequest.ContentType, body, ParameterType.RequestBody);
+            }
+
+            foreach (Cookie cookie in inputRequest.Cookies)
+            {
+                request.AddCookie(cookie.Name, cookie.Value);
+            }
+
+            foreach (string headerName in inputRequest.Headers)
+            {
+                if (ForwardHeaders.Contains(headerName.ToLower()))
+                {
+                    var headerValue = inputRequest.Headers[headerName];
+                    if (headerValue == null)
+                    {
+                        continue;
+                    }
+                    request.AddHeader(headerName, headerValue);
+                }
+            }
+
+            return await ExecuteRequestAsync(request);
         }
 
         public async Task<bool> IsInVacationMode(bool useCache = true)
@@ -326,5 +371,23 @@ namespace OgameWrapper
 
             return response;
         }
+
+        private static Method StringMethodToMethod(string method)
+        {
+            return method switch
+            {
+                "GET" => Method.GET,
+                "POST" => Method.POST,
+                "PUT" => Method.PUT,
+                "DELETE" => Method.DELETE,
+                "HEAD" => Method.HEAD,
+                "OPTIONS" => Method.OPTIONS,
+                "PATCH" => Method.PATCH,
+                "MERGE" => Method.MERGE,
+                "COPY" => Method.COPY,
+                _ => Method.GET
+            };
+        }
+
     }
 }
