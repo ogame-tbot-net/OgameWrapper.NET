@@ -395,6 +395,26 @@ namespace OgameWrapper
             request.AddJsonBody(requestBody);
 
             var response = await HttpClient.ExecuteAsync<LobbySession>(request);
+
+            // Check if captcha is present
+            if (response.StatusCode == HttpStatusCode.Conflict)
+            {
+                var header = response.Headers.First(header => header.Name == "gf-challenge-id");
+                if (header == null || header.Value == null)
+                {
+                    throw new Exception("Cannot get catpcha challenge id.");
+                }
+
+                var challengeId = (string)header.Value;
+                var solved = OgameCaptchaSolver.OgameCaptchaSolver.SolveCaptcha(challengeId, HttpClient);
+                if (!solved)
+                {
+                    throw new Exception("Cannot solve catpcha.");
+                }
+
+                return await GetSession();
+            }
+
             if (response.StatusCode != HttpStatusCode.Created)
             {
                 throw new Exception($"Unable to get connect to lobby : Invalid status code {response.StatusCode}.");
@@ -429,30 +449,8 @@ namespace OgameWrapper
 
             var response = await HttpClient.ExecuteAsync<T>(request);
 
-            if (response.StatusCode == HttpStatusCode.Forbidden)
+            if (response.StatusCode == HttpStatusCode.Forbidden || response.StatusCode == HttpStatusCode.Unauthorized)
             {
-                Session = new();
-
-                await Login();
-
-                return await ExecuteAuthenticatedAsync<T>(request);
-            }
-
-            if (response.StatusCode == HttpStatusCode.Conflict)
-            {
-                var header = response.Headers.First(header => header.Name == "gf-challenge-id");
-                if (header == null || header.Value == null) 
-                {
-                    throw new Exception("Cannot get catpcha challenge id.");
-                }
-
-                var challengeId = (string) header.Value;
-                var solved = OgameCaptchaSolver.OgameCaptchaSolver.SolveCaptcha(challengeId, HttpClient);
-                if (!solved)
-                {
-                    throw new Exception("Cannot solve catpcha.");
-                }
-
                 Session = new();
 
                 await Login();
