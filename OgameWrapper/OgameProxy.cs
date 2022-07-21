@@ -16,7 +16,7 @@ namespace OgameWrapper
         private const string COOKIE_BANNER_NAME = "gf-cookie-consent-4449562312";
         private const string COOKIE_BANNER_VALUE = "|0|1";
         
-        public OgameProxy(string host = "localhost", int port = 1337)
+        public OgameProxy(string host = "localhost", ushort port = 1337)
         {
             Listener.Prefixes.Add($"http://{host}:{port}/");
         }
