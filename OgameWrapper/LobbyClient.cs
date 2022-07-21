@@ -1,4 +1,4 @@
-﻿using OgameWrapper.Services;
+using OgameWrapper.Services;
 using OgameCaptchaSolver;
 using RestSharp;
 using System.Net;
@@ -211,9 +211,45 @@ namespace OgameWrapper
         public AccountTrading Trading { get; init; } = new();
     }
 
+    public record SimpleAccount
+    {
+        public AccountServer Server { get; init; } = new();
+
+        public uint Id { get; init; } = 0;
+
+        public string AccountGroup { get; init; } = string.Empty;
+    }
+
     public record ServerLoginResponse
     {
         public string Url { get; init; } = string.Empty;
+    }
+
+    // TODO : fix properties when Restsharp is updated
+    internal record CreateAccountRequest
+    {
+        [JsonPropertyName("accountGroup")]
+        public string accountGroup { get; set; } = string.Empty;
+
+        [JsonPropertyName("kid")]
+        public string kid { get; set; } = string.Empty;
+
+        [JsonPropertyName("locale")]
+        public string locale { get; set; } = string.Empty;
+    }
+
+    internal class ClickedButton
+    {
+        public readonly string Value;
+
+        public ClickedButton(string value)
+        {
+            Value = value;
+        }
+
+        public static ClickedButton QuickJoin = new("quick_join");
+        public static ClickedButton AccountList = new("account_list");
+        public static ClickedButton RegisterServerList = new("register_server_list");
     }
 
     public class LobbyClient
@@ -248,6 +284,9 @@ namespace OgameWrapper
                 return Session.IsValid;
             }
         }
+
+        private const string Language = "en";
+        private const string Locale = "en_GB";
 
         public LobbyClient(string email, string password, bool pioneers = false)
         {
@@ -307,12 +346,12 @@ namespace OgameWrapper
         public async Task<string> GetServerToken(Account account)
         {
             RestRequest request = new($"{BaseUrl}/api/users/me/loginLink");
-            request.AddHeader("Referer", $"{BaseUrl}/en_GB/hub");
+            request.AddHeader("Referer", $"{BaseUrl}/{Locale}/accounts");
 
-            request.AddParameter("id", account.GameAccountId);
+            request.AddParameter("id", account.Id);
             request.AddParameter("server[language]", account.Server.Language);
             request.AddParameter("server[number]", account.Server.Number);
-            request.AddParameter("clickedButton", "account_list");
+            request.AddParameter("clickedButton", ClickedButton.AccountList.Value);
 
             var response = await ExecuteAuthenticatedAsync<ServerLoginResponse>(request);
             if (response.StatusCode != HttpStatusCode.OK)
@@ -331,10 +370,34 @@ namespace OgameWrapper
             return token;
         }
 
+        public async Task<Account> CreateServerAccount(Server server)
+        {
+            RestRequest request = new($"{BaseUrl}/api/users/me/accounts", Method.PUT);
+            request.AddHeader("Referer", $"{BaseUrl}/{Locale}/accounts");
+
+            CreateAccountRequest requestBody = new()
+            {
+                accountGroup = server.AccountGroup,
+                kid = "",
+                locale = Locale,
+            };
+            request.AddJsonBody(requestBody);
+
+            var response = await ExecuteAuthenticatedAsync<SimpleAccount>(request);
+            if (response.StatusCode != HttpStatusCode.OK)
+            {
+                throw new Exception($"Unable to create server account : Invalid status code {response.StatusCode}.");
+            }
+
+            var simpleAccount = response.Data;
+            var account = await GetAccount(simpleAccount.Server.Language, simpleAccount.Server.Number);
+            return account;
+        }
+
         public async Task<List<Server>> GetServers()
         {
             var request = new RestRequest($"{BaseUrl}/api/servers");
-            request.AddHeader("Referer", $"{BaseUrl}/en_GB/");
+            request.AddHeader("Referer", $"{BaseUrl}/{Locale}/");
 
             var response = await HttpClient.ExecuteAsync<List<Server>>(request);
             if (response.StatusCode != HttpStatusCode.OK)
@@ -366,7 +429,7 @@ namespace OgameWrapper
         public async Task<Me> GetMe()
         {
             var request = new RestRequest($"{BaseUrl}/api/users/me");
-            request.AddHeader("Referer", $"{BaseUrl}/en_GB/hub");
+            request.AddHeader("Referer", $"{BaseUrl}/{Locale}/hub");
 
             var response = await ExecuteAuthenticatedAsync<Me>(request);
             if (response.StatusCode != HttpStatusCode.OK)
@@ -380,7 +443,7 @@ namespace OgameWrapper
         public async Task<List<Account>> GetAccounts()
         {
             var request = new RestRequest($"{BaseUrl}/api/users/me/accounts");
-            request.AddHeader("Referer", $"{BaseUrl}/en_GB/hub");
+            request.AddHeader("Referer", $"{BaseUrl}/{Locale}/hub");
 
             var response = await ExecuteAuthenticatedAsync<List<Account>>(request);
             if (response.StatusCode != HttpStatusCode.OK)
@@ -402,12 +465,11 @@ namespace OgameWrapper
             {
                 identity = Email,
                 password = Password,
-                gfLang = "en",
-                locale = "en_GB",
+                gfLang = Language,
+                locale = Locale,
                 gameEnvironmentId = configuration.GameEnvironmentId,
                 platformGameId = configuration.PlatformGameId,
             };
-
             request.AddJsonBody(requestBody);
 
             var response = await HttpClient.ExecuteAsync<LobbySession>(request);

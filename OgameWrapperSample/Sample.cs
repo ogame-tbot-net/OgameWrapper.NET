@@ -17,6 +17,17 @@ namespace OgameWrapper.Sample
 
             Console.WriteLine("Connected to lobby!");
 
+            /*
+            Console.WriteLine("Creating account...");
+
+            var servers = await lobbyClient.GetServers();
+            var server = servers.First(s => s.Name == "DevToolUniverse");
+
+            var account = await lobbyClient.CreateServerAccount(server);
+
+            Console.WriteLine("Account created!");
+            */
+
             Console.WriteLine("Getting account...");
 
             var account = await lobbyClient.GetAccount(serverLanguage, serverNumber);

@@ -95,7 +95,7 @@ namespace OgameWrapper
         {
             var token = await LobbyClient.GetServerToken(Account);
 
-            var url = string.Format(Page.LobbyLogin.Value, Account.GameAccountId, token);
+            var url = string.Format(Page.LobbyLogin.Value, Account.Id, token);
             RestRequest request = new(url);
 
             var response = await HttpClient.ExecuteAsync(request);
