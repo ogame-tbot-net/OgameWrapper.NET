@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Net.Mime;
+﻿using System.Net;
 using System.Text;
-using System.Threading.Tasks;
-using System.Web;
 
 namespace OgameWrapper
 {
@@ -15,7 +9,7 @@ namespace OgameWrapper
 
         private const string COOKIE_BANNER_NAME = "gf-cookie-consent-4449562312";
         private const string COOKIE_BANNER_VALUE = "|0|1";
-        
+
         public OgameProxy(string host = "localhost", ushort port = 1337)
         {
             Listener.Prefixes.Add($"http://{host}:{port}/");
@@ -23,11 +17,11 @@ namespace OgameWrapper
 
         public async void Start(OgameClient ogameClient)
         {
-            try
-            {
-                Listener.Start();
+            Listener.Start();
 
-                while (true)
+            while (true)
+            {
+                try
                 {
                     var context = await Listener.GetContextAsync();
 
@@ -86,10 +80,10 @@ namespace OgameWrapper
                     stream.Flush();
                     stream.Close();
                 }
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e);
+                catch (Exception e)
+                {
+                    Console.WriteLine($"Exception (Proxy): {e}");
+                }
             }
         }
     }

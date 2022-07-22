@@ -1,40 +1,29 @@
-﻿
-using OgameWrapper.Model;
-using System;
-using System.Net;
-
-namespace OgameWrapper.Sample
+﻿namespace OgameWrapper.Sample
 {
     public static class CaptchaCollector
     {
-        private static OgameWrapperClient ogameClient;
-
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             var flag = false;
             while (!flag)
             {
                 try
                 {
-                    Credentials credentials = new(CreateString(5, 5, 2), CreateString(5, 5, 2), "it", 161);
-                    ogameClient = new(
-                        credentials,
-                        null
-                    );
+                    var email = CreateString(5, 5, 2);
+                    var password = CreateString(5, 5, 2);
+                    LobbyClient lobbyClient = new(email, password);
 
-                    var login = ogameClient.Login();
+                    await lobbyClient.Login();
                     flag = true;
                 }
                 catch (Exception ex)
                 {
-                    
                     var rand = new Random();
                     decimal interval = rand.Next(450000, 900000);
                     Console.WriteLine($"Limit hit, waiting about {(int)Math.Round(interval / 1000 / 60)} minutes");
                     Thread.Sleep((int)Math.Round(interval));
                 }
             }
-            
 
             Console.ReadLine();
         }

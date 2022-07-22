@@ -6,15 +6,27 @@ namespace OgameWrapper.Sample
         {
             var lobbyEmail = "em@i.l";
             var lobbyPassword = "password";
+            var pioneers = true;
             var serverLanguage = "en";
             var serverNumber = 132u;
 
             Console.WriteLine("Connecting to lobby...");
 
-            LobbyClient lobbyClient = new(lobbyEmail, lobbyPassword);
+            LobbyClient lobbyClient = new(lobbyEmail, lobbyPassword, pioneers);
             await lobbyClient.Login();
 
             Console.WriteLine("Connected to lobby!");
+
+            /*
+            Console.WriteLine("Creating account...");
+
+            var servers = await lobbyClient.GetServers();
+            var server = servers.First(s => s.Name == "DevToolUniverse");
+
+            var account = await lobbyClient.CreateServerAccount(server);
+
+            Console.WriteLine("Account created!");
+            */
 
             Console.WriteLine("Getting account...");
 
@@ -28,6 +40,8 @@ namespace OgameWrapper.Sample
             await ogameClient.Login();
 
             Console.WriteLine("Connected to server!");
+
+            // await ogameClient.SelectInitialPlayerClass(Model.PlayerClasses.General);
 
             // var researches = await ogameClient.GetResearches();
             // Console.WriteLine(researches);
