@@ -64,24 +64,21 @@ namespace OgameWrapper.Includes
             }
             return string.Empty;
         }
-        internal static CelestialTypes GetCurrentCelestialType(string content)
+        internal static CelestialType GetCurrentCelestialType(string content)
         {
             var parser = new HtmlParser();
             var doc = parser.ParseDocument(content);
             var element = doc.QuerySelector("meta[name='ogame-planet-type']");
             if (element != null && element.GetAttribute("content") != null)
             {
-                switch (element.GetAttribute("content"))
+                return element.GetAttribute("content") switch
                 {
-                    case "planet":
-                        return CelestialTypes.Planet;
-                    case "moon":
-                        return CelestialTypes.Moon;
-                    default:
-                        return CelestialTypes.Planet;
-                }
+                    "planet" => CelestialType.Planet,
+                    "moon" => CelestialType.Moon,
+                    _ => CelestialType.Planet,
+                };
             }
-            return CelestialTypes.Planet;
+            return CelestialType.Planet;
         }
         internal static Coordinate? GetCurrentCelestialCoordinates(string content)
         {
@@ -91,7 +88,13 @@ namespace OgameWrapper.Includes
             if (element != null && element.GetAttribute("content") != null)
             {
                 var tokens = element.GetAttribute("content").Split(':');
-                return new(int.Parse(tokens[0]), int.Parse(tokens[1]), int.Parse(tokens[2]), GetCurrentCelestialType(content));
+                return new()
+                {
+                    Galaxy = uint.Parse(tokens[0]),
+                    System = uint.Parse(tokens[1]),
+                    Position = uint.Parse(tokens[2]),
+                    Type = GetCurrentCelestialType(content),
+                };
             }
             return null;
         }
@@ -174,7 +177,7 @@ namespace OgameWrapper.Includes
             }
             return 1;
         }
-        internal static PlayerClasses GetPlayerClass(string content)
+        internal static PlayerClass GetPlayerClass(string content)
         {
             var parser = new HtmlParser();
             var doc = parser.ParseDocument(content);
@@ -183,19 +186,19 @@ namespace OgameWrapper.Includes
             {
                 if (element.ClassList.Any(c => c == "warrior"))
                 {
-                    return PlayerClasses.General;
+                    return PlayerClass.General;
                 }
                 else if (element.ClassList.Any(c => c == "explorer"))
                 {
-                    return PlayerClasses.Discoverer;
+                    return PlayerClass.Discoverer;
                 }
                 else if (element.ClassList.Any(c => c == "miner"))
                 {
-                    return PlayerClasses.Collector;
+                    return PlayerClass.Collector;
                 }
-                return PlayerClasses.NoClass;
+                return PlayerClass.NoClass;
             }
-            return PlayerClasses.NoClass;
+            return PlayerClass.NoClass;
         }
         internal static bool IsUnderAttack(string content)
         {
@@ -222,33 +225,47 @@ namespace OgameWrapper.Includes
             var doc = parser.ParseDocument(content);
             var output = new Staff();
             var element = doc.QuerySelector("#officers");
+
+            var commander = false;
+            var admiral = false;
+            var engineer = false;
+            var geologist = false;
+            var technocrat = false;
+
             if (element != null)
             {
                 foreach (var el in element.Children)
                 {
                     if (el.ClassList.Any(c => c == "commander") && el.ClassList.Any(c2 => c2 == "on"))
                     {
-                        output.Commander = true;
+                        commander = true;
                     }
                     if (el.ClassList.Any(c => c == "admiral") && el.ClassList.Any(c2 => c2 == "on"))
                     {
-                        output.Admiral = true;
+                        admiral = true;
                     }
                     if (el.ClassList.Any(c => c == "engineer") && el.ClassList.Any(c2 => c2 == "on"))
                     {
-                        output.Engineer = true;
+                        engineer = true;
                     }
                     if (el.ClassList.Any(c => c == "geologist") && el.ClassList.Any(c2 => c2 == "on"))
                     {
-                        output.Geologist = true;
+                        geologist = true;
                     }
                     if (el.ClassList.Any(c => c == "technocrat") && el.ClassList.Any(c2 => c2 == "on"))
                     {
-                        output.Technocrat = true;
+                        technocrat = true;
                     }
                 }
             }
-            return output;
+            return new()
+            {
+                Commander = commander,
+                Admiral = admiral,
+                Engineer = engineer,
+                Geologist = geologist,
+                Technocrat = technocrat,
+            };
         }
         internal static List<Celestial> GetCelestials(string content)
         {
@@ -256,228 +273,265 @@ namespace OgameWrapper.Includes
             var doc = parser.ParseDocument(content);
             var output = new List<Celestial>();
             var element = doc.QuerySelector("#planetList");
-            if (element != null)
+            if (element == null)
             {
-                foreach (var el in element.Children.Where(e => e.ClassList.Any(c => c == "smallplanet")))
-                {
-                    var planet = new Planet();
-                    planet.ID = int.Parse(el.Id.Substring(7));
-                    var planetElement = el.Children.First();
-                    planet.Img = planetElement.Children.Single(el => el.ClassList.Any(c => c == "planetPic")).GetAttribute("src");
-                    var details = planetElement.GetAttribute("title");
-                    var detailsDoc = parser.ParseDocument(details);
-                    planet.Name = details.Substring(3, details.IndexOf('[') - 4);
-                    var coordString = details.Substring(details.IndexOf('[') + 1, details.IndexOf(']') - details.IndexOf('[') - 1);
-                    var coordTokens = coordString.Split(':');
-                    planet.Coordinate = new(
-                        int.Parse(coordTokens[0]),
-                        int.Parse(coordTokens[1]),
-                        int.Parse(coordTokens[2]),
-                        CelestialTypes.Planet
-                    );
-                    if (IsV8(content)) {
-                        planet.Diameter = int.Parse(details.Substring(details.IndexOf("<br/>") + 5, details.IndexOf("km") - (details.IndexOf("<br/>") + 5)).Replace(".", string.Empty));
-                        var fieldsString = details.Substring(details.IndexOf('(') + 1, details.IndexOf(')') - details.IndexOf('(') - 1).Replace("<span class='overmark' >", string.Empty).Replace("</span>", string.Empty);
-                        planet.Fields = new Fields
-                        {
-                            Built = int.Parse(fieldsString.Substring(0, fieldsString.IndexOf('/'))),
-                            Total = int.Parse(fieldsString.Substring(fieldsString.IndexOf('/') + 1, fieldsString.Length - (fieldsString.IndexOf('/') + 1)))
-                        };
-                        var temperatureString = details.Substring(details.IndexOf("<br>") + 4, details.LastIndexOf("°C") - (details.IndexOf("<br>") + 4));
-                        var minString = temperatureString.Substring(temperatureString.IndexOf(temperatureString.First(c => c == '-' || char.IsDigit(c))), temperatureString.IndexOf("°C")).Replace("°C", string.Empty).Trim();
-                        var maxString = temperatureString.Substring(temperatureString.LastIndexOf(" "), temperatureString.Length - temperatureString.LastIndexOf(" ")).Replace("°C", string.Empty).Trim();
-                        planet.Temperature = new Temperature
-                        {
-                            Min = int.Parse(minString),
-                            Max = int.Parse(maxString)
-                        };
-                    }
-                    else if (IsV9(content))
-                    {
-                        Lifeforms lifeform = Lifeforms.None;
-                        string lifeformString = details.Substring(details.IndexOf("<br/>") + 5, (details.NthIndexOf("<br/>", 2) - details.IndexOf("<br/>") - 5));
-                        Enum.TryParse<Lifeforms>(lifeformString.Substring(lifeformString.IndexOf(":") + 2), out lifeform);
-                        planet.Lifeform = lifeform;
-                        planet.Diameter = int.Parse(details.Substring(details.NthIndexOf("<br/>", 2) + 5, details.IndexOf("km") - (details.NthIndexOf("<br/>", 2) + 5)).Replace(".", string.Empty));
-                        var fieldsString = details.Substring(details.IndexOf('(') + 1, details.IndexOf(')') - details.IndexOf('(') - 1).Replace("<span class='overmark' >", string.Empty).Replace("</span>", string.Empty);
-                        planet.Fields = new Fields
-                        {
-                            Built = int.Parse(fieldsString.Substring(0, fieldsString.IndexOf('/'))),
-                            Total = int.Parse(fieldsString.Substring(fieldsString.IndexOf('/') + 1, fieldsString.Length - (fieldsString.IndexOf('/') + 1)))
-                        };
-                        var temperatureString = details.Substring(details.IndexOf("<br>") + 4, details.LastIndexOf("°C") - (details.IndexOf("<br>") + 4));
-                        var minString = temperatureString.Substring(temperatureString.IndexOf(temperatureString.First(c => c == '-' || char.IsDigit(c))), temperatureString.IndexOf("°C")).Replace("°C", string.Empty).Trim();
-                        var maxString = temperatureString.Substring(temperatureString.LastIndexOf(" "), temperatureString.Length - temperatureString.LastIndexOf(" ")).Replace("°C", string.Empty).Trim();
-                        planet.Temperature = new Temperature
-                        {
-                            Min = int.Parse(minString),
-                            Max = int.Parse(maxString)
-                        };
-                    }
-
-                    var moonElement = el.Children.FirstOrDefault(el => el.ClassList.Any(c => c == "moonlink"));
-                    if (moonElement != null)
-                    {
-                        var moon = new Moon();                        
-                        details = moonElement.GetAttribute("title");
-                        detailsDoc = parser.ParseDocument(details);
-                        moon.ID = int.Parse(details.Substring(details.IndexOf("cp=") + 3, 8));
-                        moon.Name = details.Substring(3, details.IndexOf('[') - 4);
-                        moon.Img = moonElement.Children.Single(el => el.ClassList.Any(c => c == "icon-moon")).GetAttribute("src");
-                        coordString = details.Substring(details.IndexOf('[') + 1, details.IndexOf(']') - details.IndexOf('[') - 1);
-                        coordTokens = coordString.Split(':');
-                        moon.Coordinate = new(
-                            int.Parse(coordTokens[0]),
-                            int.Parse(coordTokens[1]),
-                            int.Parse(coordTokens[2]),
-                            CelestialTypes.Moon
-                        );
-                        moon.Diameter = int.Parse(details.Substring(details.IndexOf("<br>") + 4, details.IndexOf("km") - (details.IndexOf("<br>") + 4)).Replace(".", string.Empty));
-                        var moonFieldsString = details.Substring(details.IndexOf('(') + 1, details.IndexOf(')') - details.IndexOf('(') - 1).Replace("<span class='overmark' >", string.Empty).Replace("</span>", string.Empty);
-                        moon.Fields = new Fields
-                        {
-                            Built = int.Parse(moonFieldsString.Substring(0, moonFieldsString.IndexOf('/'))),
-                            Total = int.Parse(moonFieldsString.Substring(moonFieldsString.IndexOf('/') + 1, moonFieldsString.Length - (moonFieldsString.IndexOf('/') + 1)))
-                        };
-
-                        planet.Moon = moon;
-                        output.Add(moon);
-                    }
-
-                    output.Add(planet);
-                }
+                return output;
             }
+
+            foreach (var el in element.Children.Where(e => e.ClassList.Any(c => c == "smallplanet")))
+            {
+                var planetId = uint.Parse(el.Id.Substring(7));
+                var planetElement = el.Children.First();
+                var planetImg = planetElement.Children.Single(el => el.ClassList.Any(c => c == "planetPic")).GetAttribute("src");
+                var details = planetElement.GetAttribute("title");
+                var detailsDoc = parser.ParseDocument(details);
+                var planetName = details.Substring(3, details.IndexOf('[') - 4);
+                var coordString = details.Substring(details.IndexOf('[') + 1, details.IndexOf(']') - details.IndexOf('[') - 1);
+                var coordTokens = coordString.Split(':');
+                Coordinate planetCoordinate = new()
+                {
+                    Galaxy = uint.Parse(coordTokens[0]),
+                    System = uint.Parse(coordTokens[1]),
+                    Position = uint.Parse(coordTokens[2]),
+                    Type = CelestialType.Planet,
+                };
+
+                var planetDiameter = 0u;
+                Fields planetFields = new();
+                Temperature planetTemperature = new();
+                Lifeform lifeform = Lifeform.None;
+
+                if (IsV8(content))
+                {
+                    planetDiameter = uint.Parse(details.Substring(details.IndexOf("<br/>") + 5, details.IndexOf("km") - (details.IndexOf("<br/>") + 5)).Replace(".", string.Empty));
+                    var fieldsString = details.Substring(details.IndexOf('(') + 1, details.IndexOf(')') - details.IndexOf('(') - 1).Replace("<span class='overmark' >", string.Empty).Replace("</span>", string.Empty);
+                    planetFields = new()
+                    {
+                        Built = uint.Parse(fieldsString.Substring(0, fieldsString.IndexOf('/'))),
+                        Total = uint.Parse(fieldsString.Substring(fieldsString.IndexOf('/') + 1, fieldsString.Length - (fieldsString.IndexOf('/') + 1)))
+                    };
+
+                    var temperatureString = details.Substring(details.IndexOf("<br>") + 4, details.LastIndexOf("°C") - (details.IndexOf("<br>") + 4));
+                    var minString = temperatureString.Substring(temperatureString.IndexOf(temperatureString.First(c => c == '-' || char.IsDigit(c))), temperatureString.IndexOf("°C")).Replace("°C", string.Empty).Trim();
+                    var maxString = temperatureString.Substring(temperatureString.LastIndexOf(" "), temperatureString.Length - temperatureString.LastIndexOf(" ")).Replace("°C", string.Empty).Trim();
+                    planetTemperature = new()
+                    {
+                        Min = int.Parse(minString),
+                        Max = int.Parse(maxString)
+                    };
+                }
+                else if (IsV9(content))
+                {
+                    string lifeformString = details.Substring(details.IndexOf("<br/>") + 5, (details.NthIndexOf("<br/>", 2) - details.IndexOf("<br/>") - 5));
+                    Enum.TryParse(lifeformString.Substring(lifeformString.IndexOf(":") + 2), out lifeform);
+
+                    planetDiameter = uint.Parse(details.Substring(details.NthIndexOf("<br/>", 2) + 5, details.IndexOf("km") - (details.NthIndexOf("<br/>", 2) + 5)).Replace(".", string.Empty));
+                    var fieldsString = details.Substring(details.IndexOf('(') + 1, details.IndexOf(')') - details.IndexOf('(') - 1).Replace("<span class='overmark' >", string.Empty).Replace("</span>", string.Empty);
+                    planetFields = new()
+                    {
+                        Built = uint.Parse(fieldsString.Substring(0, fieldsString.IndexOf('/'))),
+                        Total = uint.Parse(fieldsString.Substring(fieldsString.IndexOf('/') + 1, fieldsString.Length - (fieldsString.IndexOf('/') + 1)))
+                    };
+
+                    var temperatureString = details.Substring(details.IndexOf("<br>") + 4, details.LastIndexOf("°C") - (details.IndexOf("<br>") + 4));
+                    var minString = temperatureString.Substring(temperatureString.IndexOf(temperatureString.First(c => c == '-' || char.IsDigit(c))), temperatureString.IndexOf("°C")).Replace("°C", string.Empty).Trim();
+                    var maxString = temperatureString.Substring(temperatureString.LastIndexOf(" "), temperatureString.Length - temperatureString.LastIndexOf(" ")).Replace("°C", string.Empty).Trim();
+                    planetTemperature = new()
+                    {
+                        Min = int.Parse(minString),
+                        Max = int.Parse(maxString)
+                    };
+                }
+
+                Moon moon = new();
+
+                var moonElement = el.Children.FirstOrDefault(el => el.ClassList.Any(c => c == "moonlink"));
+                if (moonElement != null)
+                {
+                    details = moonElement.GetAttribute("title");
+                    detailsDoc = parser.ParseDocument(details);
+                    var moonId = uint.Parse(details.Substring(details.IndexOf("cp=") + 3, 8));
+                    var moonName = details.Substring(3, details.IndexOf('[') - 4);
+                    var moonImg = moonElement.Children.Single(el => el.ClassList.Any(c => c == "icon-moon")).GetAttribute("src");
+
+                    coordString = details.Substring(details.IndexOf('[') + 1, details.IndexOf(']') - details.IndexOf('[') - 1);
+                    coordTokens = coordString.Split(':');
+                    Coordinate moonCoordinate = new()
+                    {
+                        Galaxy = uint.Parse(coordTokens[0]),
+                        System = uint.Parse(coordTokens[1]),
+                        Position = uint.Parse(coordTokens[2]),
+                        Type = CelestialType.Moon,
+                    };
+
+                    var moonDiameter = uint.Parse(details.Substring(details.IndexOf("<br>") + 4, details.IndexOf("km") - (details.IndexOf("<br>") + 4)).Replace(".", string.Empty));
+                    var moonFieldsString = details.Substring(details.IndexOf('(') + 1, details.IndexOf(')') - details.IndexOf('(') - 1).Replace("<span class='overmark' >", string.Empty).Replace("</span>", string.Empty);
+                    Fields moonFields = new()
+                    {
+                        Built = uint.Parse(moonFieldsString.Substring(0, moonFieldsString.IndexOf('/'))),
+                        Total = uint.Parse(moonFieldsString.Substring(moonFieldsString.IndexOf('/') + 1, moonFieldsString.Length - (moonFieldsString.IndexOf('/') + 1)))
+                    };
+
+                    moon = new()
+                    {
+                        Id = moonId,
+                        Name = moonName,
+                        Img = moonImg,
+                        Coordinate = moonCoordinate,
+                        Diameter = moonDiameter,
+                        Fields = moonFields,
+                    };
+
+                    output.Add(moon);
+                }
+
+                Planet planet = new()
+                {
+                    Id = planetId,
+                    Name = planetName,
+                    Img = planetImg,
+                    Coordinate = planetCoordinate,
+                    Diameter = planetDiameter,
+                    Fields = planetFields,
+                    Moon = moon,
+                    Lifeform = lifeform,
+                };
+                output.Add(planet);
+            }
+
             return output
                 .OrderBy(c => c.Coordinate.Galaxy)
                 .ThenBy(c => c.Coordinate.System)
                 .ThenBy(c => c.Coordinate.Position)
-                .ThenByDescending(c => c.Coordinate.Type == CelestialTypes.Planet)
+                .ThenByDescending(c => c.Coordinate.Type == CelestialType.Planet)
                 .ToList();
         }
 
         internal static Techs GetTechs(string content)
         {
-            Dictionary<Buildables, int> decodedJson = new();
+            Dictionary<Buildable, uint> decodedJson = new();
+
             try
             {
-                decodedJson = JsonConvert.DeserializeObject<Dictionary<Buildables, int>>(content);
+                decodedJson = JsonConvert.DeserializeObject<Dictionary<Buildable, uint>>(content);
             }
-            catch (Exception e) { }
+            catch { }
+
             return new Techs
             {
-                Buildings = new Buildings
+                Buildings = new()
                 {
-                    MetalMine = decodedJson.GetValueOrDefault(Buildables.MetalMine, 0),
-                    CrystalMine = decodedJson.GetValueOrDefault(Buildables.CrystalMine, 0),
-                    DeuteriumSynthesizer = decodedJson.GetValueOrDefault(Buildables.DeuteriumSynthesizer, 0),
-                    SolarPlant = decodedJson.GetValueOrDefault(Buildables.SolarPlant, 0),
-                    FusionReactor = decodedJson.GetValueOrDefault(Buildables.FusionReactor, 0),
-                    MetalStorage = decodedJson.GetValueOrDefault(Buildables.MetalStorage, 0),
-                    CrystalStorage = decodedJson.GetValueOrDefault(Buildables.CrystalStorage, 0),
-                    DeuteriumTank = decodedJson.GetValueOrDefault(Buildables.DeuteriumTank, 0),
-                    SolarSatellite = decodedJson.GetValueOrDefault(Buildables.SolarSatellite, 0)
+                    MetalMine = decodedJson.GetValueOrDefault(Buildable.MetalMine, 0u),
+                    CrystalMine = decodedJson.GetValueOrDefault(Buildable.CrystalMine, 0u),
+                    DeuteriumSynthesizer = decodedJson.GetValueOrDefault(Buildable.DeuteriumSynthesizer, 0u),
+                    SolarPlant = decodedJson.GetValueOrDefault(Buildable.SolarPlant, 0u),
+                    FusionReactor = decodedJson.GetValueOrDefault(Buildable.FusionReactor, 0u),
+                    MetalStorage = decodedJson.GetValueOrDefault(Buildable.MetalStorage, 0u),
+                    CrystalStorage = decodedJson.GetValueOrDefault(Buildable.CrystalStorage, 0u),
+                    DeuteriumTank = decodedJson.GetValueOrDefault(Buildable.DeuteriumTank, 0u),
+                    SolarSatellite = decodedJson.GetValueOrDefault(Buildable.SolarSatellite, 0u)
                 },
-                Facilities = new Facilities
+                Facilities = new()
                 {
-                    RoboticsFactory = decodedJson.GetValueOrDefault(Buildables.RoboticsFactory, 0),
-                    ResearchLab = decodedJson.GetValueOrDefault(Buildables.ResearchLab, 0),
-                    Shipyard = decodedJson.GetValueOrDefault(Buildables.Shipyard, 0),
-                    MissileSilo = decodedJson.GetValueOrDefault(Buildables.MissileSilo, 0),
-                    NaniteFactory = decodedJson.GetValueOrDefault(Buildables.NaniteFactory, 0),
-                    SpaceDock = decodedJson.GetValueOrDefault(Buildables.SpaceDock, 0),
-                    Terraformer = decodedJson.GetValueOrDefault(Buildables.Terraformer, 0),
-                    AllianceDepot = decodedJson.GetValueOrDefault(Buildables.AllianceDepot, 0),
-                    LunarBase = decodedJson.GetValueOrDefault(Buildables.LunarBase, 0),
-                    SensorPhalanx = decodedJson.GetValueOrDefault(Buildables.SensorPhalanx, 0),
-                    JumpGate = decodedJson.GetValueOrDefault(Buildables.JumpGate, 0)
+                    RoboticsFactory = decodedJson.GetValueOrDefault(Buildable.RoboticsFactory, 0u),
+                    ResearchLab = decodedJson.GetValueOrDefault(Buildable.ResearchLab, 0u),
+                    Shipyard = decodedJson.GetValueOrDefault(Buildable.Shipyard, 0u),
+                    MissileSilo = decodedJson.GetValueOrDefault(Buildable.MissileSilo, 0u),
+                    NaniteFactory = decodedJson.GetValueOrDefault(Buildable.NaniteFactory, 0u),
+                    SpaceDock = decodedJson.GetValueOrDefault(Buildable.SpaceDock, 0u),
+                    Terraformer = decodedJson.GetValueOrDefault(Buildable.Terraformer, 0u),
+                    AllianceDepot = decodedJson.GetValueOrDefault(Buildable.AllianceDepot, 0u),
+                    LunarBase = decodedJson.GetValueOrDefault(Buildable.LunarBase, 0u),
+                    SensorPhalanx = decodedJson.GetValueOrDefault(Buildable.SensorPhalanx, 0u),
+                    JumpGate = decodedJson.GetValueOrDefault(Buildable.JumpGate, 0u)
                 },
-                Ships = new Ships
+                Ships = new()
                 {
-                    LightFighter = decodedJson.GetValueOrDefault(Buildables.LightFighter, 0),
-                    HeavyFighter = decodedJson.GetValueOrDefault(Buildables.HeavyFighter, 0),
-                    Cruiser = decodedJson.GetValueOrDefault(Buildables.Cruiser, 0),
-                    Pathfinder = decodedJson.GetValueOrDefault(Buildables.Pathfinder, 0),
-                    Battleship = decodedJson.GetValueOrDefault(Buildables.Battleship, 0),
-                    Battlecruiser = decodedJson.GetValueOrDefault(Buildables.Battlecruiser, 0),
-                    Bomber = decodedJson.GetValueOrDefault(Buildables.Bomber, 0),
-                    Destroyer = decodedJson.GetValueOrDefault(Buildables.Destroyer, 0),
-                    Reaper = decodedJson.GetValueOrDefault(Buildables.Reaper, 0),
-                    Deathstar = decodedJson.GetValueOrDefault(Buildables.Deathstar, 0),
-                    SmallCargo = decodedJson.GetValueOrDefault(Buildables.SmallCargo, 0),
-                    LargeCargo = decodedJson.GetValueOrDefault(Buildables.LargeCargo, 0),
-                    Recycler = decodedJson.GetValueOrDefault(Buildables.Recycler, 0),
-                    ColonyShip = decodedJson.GetValueOrDefault(Buildables.ColonyShip, 0),
-                    EspionageProbe = decodedJson.GetValueOrDefault(Buildables.EspionageProbe, 0),
-                    Crawler = decodedJson.GetValueOrDefault(Buildables.Crawler, 0),
-                    SolarSatellite = decodedJson.GetValueOrDefault(Buildables.SolarSatellite, 0)
+                    LightFighter = decodedJson.GetValueOrDefault(Buildable.LightFighter, 0u),
+                    HeavyFighter = decodedJson.GetValueOrDefault(Buildable.HeavyFighter, 0u),
+                    Cruiser = decodedJson.GetValueOrDefault(Buildable.Cruiser, 0u),
+                    Pathfinder = decodedJson.GetValueOrDefault(Buildable.Pathfinder, 0u),
+                    Battleship = decodedJson.GetValueOrDefault(Buildable.Battleship, 0u),
+                    Battlecruiser = decodedJson.GetValueOrDefault(Buildable.Battlecruiser, 0u),
+                    Bomber = decodedJson.GetValueOrDefault(Buildable.Bomber, 0u),
+                    Destroyer = decodedJson.GetValueOrDefault(Buildable.Destroyer, 0u),
+                    Reaper = decodedJson.GetValueOrDefault(Buildable.Reaper, 0u),
+                    Deathstar = decodedJson.GetValueOrDefault(Buildable.Deathstar, 0u),
+                    SmallCargo = decodedJson.GetValueOrDefault(Buildable.SmallCargo, 0u),
+                    LargeCargo = decodedJson.GetValueOrDefault(Buildable.LargeCargo, 0u),
+                    Recycler = decodedJson.GetValueOrDefault(Buildable.Recycler, 0u),
+                    ColonyShip = decodedJson.GetValueOrDefault(Buildable.ColonyShip, 0u),
+                    EspionageProbe = decodedJson.GetValueOrDefault(Buildable.EspionageProbe, 0u),
+                    Crawler = decodedJson.GetValueOrDefault(Buildable.Crawler, 0u),
+                    SolarSatellite = decodedJson.GetValueOrDefault(Buildable.SolarSatellite, 0u)
                 },
-                Defences = new Defences
+                Defences = new()
                 {
-                    RocketLauncher = decodedJson.GetValueOrDefault(Buildables.RocketLauncher, 0),
-                    LightLaser = decodedJson.GetValueOrDefault(Buildables.LightLaser, 0),
-                    HeavyLaser = decodedJson.GetValueOrDefault(Buildables.HeavyLaser, 0),
-                    IonCannon = decodedJson.GetValueOrDefault(Buildables.IonCannon, 0),
-                    GaussCannon = decodedJson.GetValueOrDefault(Buildables.GaussCannon, 0),
-                    PlasmaTurret = decodedJson.GetValueOrDefault(Buildables.PlasmaTurret, 0),
-                    SmallShieldDome = decodedJson.GetValueOrDefault(Buildables.SmallShieldDome, 0),
-                    LargeShieldDome = decodedJson.GetValueOrDefault(Buildables.LargeShieldDome, 0),
-                    AntiBallisticMissiles = decodedJson.GetValueOrDefault(Buildables.AntiBallisticMissiles, 0),
-                    InterplanetaryMissiles = decodedJson.GetValueOrDefault(Buildables.InterplanetaryMissiles, 0)
+                    RocketLauncher = decodedJson.GetValueOrDefault(Buildable.RocketLauncher, 0u),
+                    LightLaser = decodedJson.GetValueOrDefault(Buildable.LightLaser, 0u),
+                    HeavyLaser = decodedJson.GetValueOrDefault(Buildable.HeavyLaser, 0u),
+                    IonCannon = decodedJson.GetValueOrDefault(Buildable.IonCannon, 0u),
+                    GaussCannon = decodedJson.GetValueOrDefault(Buildable.GaussCannon, 0u),
+                    PlasmaTurret = decodedJson.GetValueOrDefault(Buildable.PlasmaTurret, 0u),
+                    SmallShieldDome = decodedJson.GetValueOrDefault(Buildable.SmallShieldDome, 0u),
+                    LargeShieldDome = decodedJson.GetValueOrDefault(Buildable.LargeShieldDome, 0u),
+                    AntiBallisticMissiles = decodedJson.GetValueOrDefault(Buildable.AntiBallisticMissiles, 0u),
+                    InterplanetaryMissiles = decodedJson.GetValueOrDefault(Buildable.InterplanetaryMissiles, 0u)
                 },
-                Researches = new Researches
+                Researches = new()
                 {
-                    EnergyTechnology = decodedJson.GetValueOrDefault(Buildables.EnergyTechnology, 0),
-                    LaserTechnology = decodedJson.GetValueOrDefault(Buildables.LaserTechnology, 0),
-                    IonTechnology = decodedJson.GetValueOrDefault(Buildables.IonTechnology, 0),
-                    HyperspaceTechnology = decodedJson.GetValueOrDefault(Buildables.HyperspaceTechnology, 0),
-                    PlasmaTechnology = decodedJson.GetValueOrDefault(Buildables.PlasmaTechnology, 0),
-                    EspionageTechnology = decodedJson.GetValueOrDefault(Buildables.EspionageTechnology, 0),
-                    ComputerTechnology = decodedJson.GetValueOrDefault(Buildables.ComputerTechnology, 0),
-                    Astrophysics = decodedJson.GetValueOrDefault(Buildables.Astrophysics, 0),
-                    IntergalacticResearchNetwork = decodedJson.GetValueOrDefault(Buildables.IntergalacticResearchNetwork, 0),
-                    GravitonTechnology = decodedJson.GetValueOrDefault(Buildables.GravitonTechnology, 0),
-                    CombustionDrive = decodedJson.GetValueOrDefault(Buildables.CombustionDrive, 0),
-                    ImpulseDrive = decodedJson.GetValueOrDefault(Buildables.ImpulseDrive, 0),
-                    HyperspaceDrive = decodedJson.GetValueOrDefault(Buildables.HyperspaceDrive, 0),
-                    WeaponsTechnology = decodedJson.GetValueOrDefault(Buildables.WeaponsTechnology, 0),
-                    ShieldingTechnology = decodedJson.GetValueOrDefault(Buildables.ShieldingTechnology, 0),
-                    ArmourTechnology = decodedJson.GetValueOrDefault(Buildables.ArmourTechnology, 0)
+                    EnergyTechnology = decodedJson.GetValueOrDefault(Buildable.EnergyTechnology, 0u),
+                    LaserTechnology = decodedJson.GetValueOrDefault(Buildable.LaserTechnology, 0u),
+                    IonTechnology = decodedJson.GetValueOrDefault(Buildable.IonTechnology, 0u),
+                    HyperspaceTechnology = decodedJson.GetValueOrDefault(Buildable.HyperspaceTechnology, 0u),
+                    PlasmaTechnology = decodedJson.GetValueOrDefault(Buildable.PlasmaTechnology, 0u),
+                    EspionageTechnology = decodedJson.GetValueOrDefault(Buildable.EspionageTechnology, 0u),
+                    ComputerTechnology = decodedJson.GetValueOrDefault(Buildable.ComputerTechnology, 0u),
+                    Astrophysics = decodedJson.GetValueOrDefault(Buildable.Astrophysics, 0u),
+                    IntergalacticResearchNetwork = decodedJson.GetValueOrDefault(Buildable.IntergalacticResearchNetwork, 0u),
+                    GravitonTechnology = decodedJson.GetValueOrDefault(Buildable.GravitonTechnology, 0u),
+                    CombustionDrive = decodedJson.GetValueOrDefault(Buildable.CombustionDrive, 0u),
+                    ImpulseDrive = decodedJson.GetValueOrDefault(Buildable.ImpulseDrive, 0u),
+                    HyperspaceDrive = decodedJson.GetValueOrDefault(Buildable.HyperspaceDrive, 0u),
+                    WeaponsTechnology = decodedJson.GetValueOrDefault(Buildable.WeaponsTechnology, 0u),
+                    ShieldingTechnology = decodedJson.GetValueOrDefault(Buildable.ShieldingTechnology, 0u),
+                    ArmourTechnology = decodedJson.GetValueOrDefault(Buildable.ArmourTechnology, 0u)
                 },
-                LifeformBuildings = new LifeformBuildings
+                LifeformBuildings = new()
                 {
-                    ResidentialSector = decodedJson.GetValueOrDefault(Buildables.ResidentialSector, 0),
-                    BiosphereFarm = decodedJson.GetValueOrDefault(Buildables.BiosphereFarm, 0),
-                    ResearchCentre = decodedJson.GetValueOrDefault(Buildables.ResearchCentre, 0),
-                    AcademyOfSciences = decodedJson.GetValueOrDefault(Buildables.AcademyOfSciences, 0),
-                    NeuroCalibrationCentre = decodedJson.GetValueOrDefault(Buildables.NeuroCalibrationCentre, 0),
-                    HighEnergySmelting = decodedJson.GetValueOrDefault(Buildables.HighEnergySmelting, 0),
-                    FoodSilo = decodedJson.GetValueOrDefault(Buildables.FoodSilo, 0),
-                    FusionPoweredProduction = decodedJson.GetValueOrDefault(Buildables.FusionPoweredProduction, 0),
-                    Skyscraper = decodedJson.GetValueOrDefault(Buildables.Skyscraper, 0),
-                    BiotechLab = decodedJson.GetValueOrDefault(Buildables.BiotechLab, 0),
-                    Metropolis = decodedJson.GetValueOrDefault(Buildables.Metropolis, 0),
-                    PlanetaryShield = decodedJson.GetValueOrDefault(Buildables.PlanetaryShield, 0)
+                    ResidentialSector = decodedJson.GetValueOrDefault(Buildable.ResidentialSector, 0u),
+                    BiosphereFarm = decodedJson.GetValueOrDefault(Buildable.BiosphereFarm, 0u),
+                    ResearchCentre = decodedJson.GetValueOrDefault(Buildable.ResearchCentre, 0u),
+                    AcademyOfSciences = decodedJson.GetValueOrDefault(Buildable.AcademyOfSciences, 0u),
+                    NeuroCalibrationCentre = decodedJson.GetValueOrDefault(Buildable.NeuroCalibrationCentre, 0u),
+                    HighEnergySmelting = decodedJson.GetValueOrDefault(Buildable.HighEnergySmelting, 0u),
+                    FoodSilo = decodedJson.GetValueOrDefault(Buildable.FoodSilo, 0u),
+                    FusionPoweredProduction = decodedJson.GetValueOrDefault(Buildable.FusionPoweredProduction, 0u),
+                    Skyscraper = decodedJson.GetValueOrDefault(Buildable.Skyscraper, 0u),
+                    BiotechLab = decodedJson.GetValueOrDefault(Buildable.BiotechLab, 0u),
+                    Metropolis = decodedJson.GetValueOrDefault(Buildable.Metropolis, 0u),
+                    PlanetaryShield = decodedJson.GetValueOrDefault(Buildable.PlanetaryShield, 0u)
                 },
-                LifeformResearches = new LifeformResearches
+                LifeformResearches = new()
                 {
-                    IntergalacticEnvoys = decodedJson.GetValueOrDefault(Buildables.IntergalacticEnvoys, 0),
-                    HighPerformanceExtractors = decodedJson.GetValueOrDefault(Buildables.HighPerformanceExtractors, 0),
-                    FusionDrives = decodedJson.GetValueOrDefault(Buildables.FusionDrives, 0),
-                    StealthFieldGenerator = decodedJson.GetValueOrDefault(Buildables.StealthFieldGenerator, 0),
-                    OrbitalDen = decodedJson.GetValueOrDefault(Buildables.OrbitalDen, 0),
-                    ResearchAI = decodedJson.GetValueOrDefault(Buildables.ResearchAI, 0),
-                    HighPerformanceTerraformer = decodedJson.GetValueOrDefault(Buildables.HighPerformanceTerraformer, 0),
-                    EnhancedProductionTechnologies = decodedJson.GetValueOrDefault(Buildables.EnhancedProductionTechnologies, 0),
-                    LightFighterMkII = decodedJson.GetValueOrDefault(Buildables.LightFighterMkII, 0),
-                    CruiserMkII = decodedJson.GetValueOrDefault(Buildables.CruiserMkII, 0),
-                    ImprovedLabTechnology = decodedJson.GetValueOrDefault(Buildables.ImprovedLabTechnology, 0),
-                    PlasmaTerraformer = decodedJson.GetValueOrDefault(Buildables.PlasmaTerraformer, 0),
-                    LowTemperatureDrives = decodedJson.GetValueOrDefault(Buildables.LowTemperatureDrives, 0),
-                    BomberMkII = decodedJson.GetValueOrDefault(Buildables.BomberMkII, 0),
-                    DestroyerMkII = decodedJson.GetValueOrDefault(Buildables.DestroyerMkII, 0),
-                    BattlecruiserMkII = decodedJson.GetValueOrDefault(Buildables.BattlecruiserMkII, 0),
-                    RobotAssistants = decodedJson.GetValueOrDefault(Buildables.RobotAssistants, 0),
-                    Supercomputer = decodedJson.GetValueOrDefault(Buildables.Supercomputer, 0),
+                    IntergalacticEnvoys = decodedJson.GetValueOrDefault(Buildable.IntergalacticEnvoys, 0u),
+                    HighPerformanceExtractors = decodedJson.GetValueOrDefault(Buildable.HighPerformanceExtractors, 0u),
+                    FusionDrives = decodedJson.GetValueOrDefault(Buildable.FusionDrives, 0u),
+                    StealthFieldGenerator = decodedJson.GetValueOrDefault(Buildable.StealthFieldGenerator, 0u),
+                    OrbitalDen = decodedJson.GetValueOrDefault(Buildable.OrbitalDen, 0u),
+                    ResearchAI = decodedJson.GetValueOrDefault(Buildable.ResearchAI, 0u),
+                    HighPerformanceTerraformer = decodedJson.GetValueOrDefault(Buildable.HighPerformanceTerraformer, 0u),
+                    EnhancedProductionTechnologies = decodedJson.GetValueOrDefault(Buildable.EnhancedProductionTechnologies, 0u),
+                    LightFighterMkII = decodedJson.GetValueOrDefault(Buildable.LightFighterMkII, 0u),
+                    CruiserMkII = decodedJson.GetValueOrDefault(Buildable.CruiserMkII, 0u),
+                    ImprovedLabTechnology = decodedJson.GetValueOrDefault(Buildable.ImprovedLabTechnology, 0u),
+                    PlasmaTerraformer = decodedJson.GetValueOrDefault(Buildable.PlasmaTerraformer, 0u),
+                    LowTemperatureDrives = decodedJson.GetValueOrDefault(Buildable.LowTemperatureDrives, 0u),
+                    BomberMkII = decodedJson.GetValueOrDefault(Buildable.BomberMkII, 0u),
+                    DestroyerMkII = decodedJson.GetValueOrDefault(Buildable.DestroyerMkII, 0u),
+                    BattlecruiserMkII = decodedJson.GetValueOrDefault(Buildable.BattlecruiserMkII, 0u),
+                    RobotAssistants = decodedJson.GetValueOrDefault(Buildable.RobotAssistants, 0u),
+                    Supercomputer = decodedJson.GetValueOrDefault(Buildable.Supercomputer, 0u),
                 }
             };
         }
@@ -515,48 +569,48 @@ namespace OgameWrapper.Includes
             IHtmlDocument energyTooltip = parser.ParseDocument(decodedJson.resources.energy.tooltip.ToString());
             IHtmlDocument darkmatterTooltip = parser.ParseDocument(decodedJson.resources.darkmatter.tooltip.ToString());
 
-            Resource metal = new Resource
+            Resource metal = new()
             {
                 Available = decodedJson.resources.metal.amount,
                 StorageCapacity = decodedJson.resources.metal.storage,
-                CurrentProduction = long.Parse(CleanString(metalTooltip.QuerySelector("table tr:nth-child(3) td").TextContent)),
-                DenCapacity = long.Parse(CleanString(metalTooltip.QuerySelector("table tr:nth-child(4) td").TextContent))
+                CurrentProduction = ulong.Parse(CleanString(metalTooltip.QuerySelector("table tr:nth-child(3) td").TextContent)),
+                DenCapacity = ulong.Parse(CleanString(metalTooltip.QuerySelector("table tr:nth-child(4) td").TextContent))
             };
-            Resource crystal = new Resource
+            Resource crystal = new()
             {
                 Available = decodedJson.resources.crystal.amount,
                 StorageCapacity = decodedJson.resources.crystal.storage,
-                CurrentProduction = long.Parse(CleanString(crystalTooltip.QuerySelector("table tr:nth-child(3) td").TextContent)),
-                DenCapacity = long.Parse(CleanString(crystalTooltip.QuerySelector("table tr:nth-child(4) td").TextContent))
+                CurrentProduction = ulong.Parse(CleanString(crystalTooltip.QuerySelector("table tr:nth-child(3) td").TextContent)),
+                DenCapacity = ulong.Parse(CleanString(crystalTooltip.QuerySelector("table tr:nth-child(4) td").TextContent))
             };
-            Resource deuterium = new Resource
+            Resource deuterium = new()
             {
                 Available = decodedJson.resources.deuterium.amount,
                 StorageCapacity = decodedJson.resources.deuterium.storage,
-                CurrentProduction = long.Parse(CleanString(deuteriumTooltip.QuerySelector("table tr:nth-child(3) td").TextContent)),
-                DenCapacity = long.Parse(CleanString(deuteriumTooltip.QuerySelector("table tr:nth-child(4) td").TextContent))
+                CurrentProduction = ulong.Parse(CleanString(deuteriumTooltip.QuerySelector("table tr:nth-child(3) td").TextContent)),
+                DenCapacity = ulong.Parse(CleanString(deuteriumTooltip.QuerySelector("table tr:nth-child(4) td").TextContent))
             };
             Energy energy = new()
             {
                 Available = decodedJson.resources.energy.amount,
-                Consumption = long.Parse(CleanString(energyTooltip.QuerySelector("table tr:nth-child(2) td").TextContent)),
-                CurrentProduction = long.Parse(CleanString(energyTooltip.QuerySelector("table tr:nth-child(3) td").TextContent))
+                Consumption = ulong.Parse(CleanString(energyTooltip.QuerySelector("table tr:nth-child(2) td").TextContent)),
+                CurrentProduction = ulong.Parse(CleanString(energyTooltip.QuerySelector("table tr:nth-child(3) td").TextContent))
             };
             Darkmatter darkmatter = new()
             {
                 Available = decodedJson.resources.darkmatter.amount,
-                Purchased = long.Parse(CleanString(darkmatterTooltip.QuerySelector("table tr:nth-child(2) td").TextContent)),
-                Found = long.Parse(CleanString(darkmatterTooltip.QuerySelector("table tr:nth-child(3) td").TextContent))
+                Purchased = ulong.Parse(CleanString(darkmatterTooltip.QuerySelector("table tr:nth-child(2) td").TextContent)),
+                Found = ulong.Parse(CleanString(darkmatterTooltip.QuerySelector("table tr:nth-child(3) td").TextContent))
             };
             Population population = new()
             {
-                Available = (long)Math.Round(float.Parse((string)(decodedJson.resources.population.amount))),
+                Available = (ulong)Math.Round(float.Parse((string)(decodedJson.resources.population.amount))),
                 StorageCapacity = decodedJson.resources.population.storage,
                 SafeCapacity = decodedJson.resources.population.safeCapacity,
                 GrowthRate = decodedJson.resources.population.growthRate,
                 CapableToFeed = decodedJson.resources.population.capableToFeed,
                 NeedFood = decodedJson.resources.population.needFood,
-                SingleFoodCOnsumption = decodedJson.resources.population.singleFoodConsumption
+                SingleFoodConsumption = decodedJson.resources.population.singleFoodConsumption
             };
             Food food = new()
             {
@@ -567,7 +621,16 @@ namespace OgameWrapper.Includes
                 ExtraProduction = decodedJson.resources.food.extraproduction,
                 Consumption = decodedJson.resources.food.consumption,
             };
-            return new ResourcesProduction(metal, crystal, deuterium, energy, darkmatter, population, food);
+            return new()
+            {
+                Metal = metal,
+                Crystal = crystal,
+                Deuterium = deuterium,
+                Energy = energy,
+                Darkmatter = darkmatter,
+                Population = population,
+                Food = food
+            };
         }
         internal static ResourceSettings GetResourcesSettings(string content)
         {
@@ -576,13 +639,13 @@ namespace OgameWrapper.Includes
             var tokens = doc.QuerySelectorAll("option").Where(e => e.Attributes.Any(a => a.Name == "selected")).ToArray();
             return new ResourceSettings
             {
-                MetalMine = (ResourceSettingsPercents)int.Parse(tokens[0].GetAttribute("value")),
-                CrystalMine = (ResourceSettingsPercents)int.Parse(tokens[1].GetAttribute("value")),
-                DeuteriumSynthesizer = (ResourceSettingsPercents)int.Parse(tokens[2].GetAttribute("value")),
-                SolarPlant = (ResourceSettingsPercents)int.Parse(tokens[3].GetAttribute("value")),
-                FusionReactor = (ResourceSettingsPercents)int.Parse(tokens[4].GetAttribute("value")),
-                SolarSatellite = (ResourceSettingsPercents)int.Parse(tokens[5].GetAttribute("value")),
-                Crawler = (ResourceSettingsPercents)int.Parse(tokens[6].GetAttribute("value")),
+                MetalMine = (ResourceSettingsPercent)int.Parse(tokens[0].GetAttribute("value")),
+                CrystalMine = (ResourceSettingsPercent)int.Parse(tokens[1].GetAttribute("value")),
+                DeuteriumSynthesizer = (ResourceSettingsPercent)int.Parse(tokens[2].GetAttribute("value")),
+                SolarPlant = (ResourceSettingsPercent)int.Parse(tokens[3].GetAttribute("value")),
+                FusionReactor = (ResourceSettingsPercent)int.Parse(tokens[4].GetAttribute("value")),
+                SolarSatellite = (ResourceSettingsPercent)int.Parse(tokens[5].GetAttribute("value")),
+                Crawler = (ResourceSettingsPercent)int.Parse(tokens[6].GetAttribute("value")),
             };
         }
         internal static Slots GetSlots(string content)
@@ -593,14 +656,13 @@ namespace OgameWrapper.Includes
             var r = Regex.Matches(searchString, "[0-9]+/[0-9]+");
             var fleetTokens = r[0].Value.Split('/');
             var expTokens = r[1].Value.Split('/');
-            var slots = new Slots
+            return new()
             {
-                InUse = int.Parse(fleetTokens[0]),
-                Total = int.Parse(fleetTokens[1]),
-                ExpInUse = int.Parse(expTokens[0]),
-                ExpTotal = int.Parse(expTokens[1])
+                InUse = uint.Parse(fleetTokens[0]),
+                Total = uint.Parse(fleetTokens[1]),
+                ExpInUse = uint.Parse(expTokens[0]),
+                ExpTotal = uint.Parse(expTokens[1])
             };
-            return slots;
         }
     }
 }

@@ -1,1235 +1,1279 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Reflection;
-using System.Text;
+﻿using System.Reflection;
 
 namespace OgameWrapper.Model
 {
-	public class Coordinate
-	{
-		public Coordinate(int galaxy = 1, int system = 1, int position = 1, CelestialTypes type = CelestialTypes.Planet)
-		{
-			Galaxy = galaxy;
-			System = system;
-			Position = position;
-			Type = type;
-		}
-		public int Galaxy { get; set; }
-		public int System { get; set; }
-		public int Position { get; set; }
-		public CelestialTypes Type { get; set; }
+    public record Coordinate
+    {
+        public uint Galaxy { get; init; }
 
-		public override string ToString()
-		{
-			return $"[{GetCelestialCode()}:{Galaxy}:{System}:{Position}]";
-		}
+        public uint System { get; init; }
 
-		private string GetCelestialCode()
-		{
-			return Type switch
-			{
-				CelestialTypes.Planet => "P",
-				CelestialTypes.Debris => "DF",
-				CelestialTypes.Moon => "M",
-				CelestialTypes.DeepSpace => "DS",
-				_ => "",
-			};
-		}
+        public uint Position { get; init; }
 
-		public bool IsSame(Coordinate otherCoord)
-		{
-			return Galaxy == otherCoord.Galaxy
-				&& System == otherCoord.System
-				&& Position == otherCoord.Position
-				&& Type == otherCoord.Type;
-		}
-	}
+        public CelestialType Type { get; init; }
 
-	public class Fields
-	{
-		public int Built { get; set; }
-		public int Total { get; set; }
-		public int Free
-		{
-			get
-			{
-				return Total - Built;
-			}
-		}
-		public bool IsFull {
-			get
-			{
-				return Built == Total;
-			}
-		}
         public override string ToString()
         {
-			return Built.ToString() + "/" + Total.ToString();
+            return $"[{GetCelestialCode()}:{Galaxy}:{System}:{Position}]";
         }
-    }
 
-	public class Temperature
-	{
-		public int Min { get; set; }
-		public int Max { get; set; }
-		public float Average
-		{
-			get
-			{
-				return (float)(Min + Max) / 2;
-			}
-		}
-		public override string ToString()
-		{
-			return Min.ToString() + "°C ~ " + Max.ToString() + "°C";
-		}
-	}
-
-	public class ResourceSettings
-	{
-		public ResourceSettingsPercents? MetalMine { get; set; }
-		public ResourceSettingsPercents CrystalMine { get; set; }
-		public ResourceSettingsPercents DeuteriumSynthesizer { get; set; }
-		public ResourceSettingsPercents SolarPlant { get; set; }
-		public ResourceSettingsPercents FusionReactor { get; set; }
-		public ResourceSettingsPercents? SolarSatellite { get; set; }
-		public ResourceSettingsPercents? Crawler { get; set; }
-	}
-
-	public class Celestial
-	{
-		public int ID { get; set; }
-		public string? Img { get; set; }
-		public string? Name { get; set; }
-		public int? Diameter { get; set; }
-		public int? Activity { get; set; }
-		public Coordinate? Coordinate { get; set; }
-		public Fields? Fields { get; set; }
-		public Resources? Resources { get; set; }
-		public Ships? Ships { get; set; }
-		public Defences? Defences { get; set; }
-		public Buildings? Buildings { get; set; }
-		public Facilities? Facilities { get; set; }
-		public List<Production>? Productions { get; set; }
-		public Constructions? Constructions { get; set; }
-		public ResourceSettings? ResourceSettings { get; set; }
-		public ResourcesProduction? ResourcesProduction { get; set; }
-		public GalaxyDebris? Debris { get; set; }
-
-		public override string ToString()
-		{
-			return $"{Name} {Coordinate}";
-		}
-
-		public bool HasProduction()
-		{
-			if (Productions == null) return false;
-			return Productions.Count != 0;
-		}
-
-		internal bool HasConstruction()
-		{
-			if (Constructions == null) return false;
-			return Constructions.BuildingID != (int)Buildables.Null;
-		}
-
-		public bool HasCoords(Coordinate coords)
-		{
-			if (Coordinate == null) return false;
-			return coords.Galaxy == Coordinate.Galaxy
-				&& coords.System == Coordinate.System
-				&& coords.Position == Coordinate.Position
-				&& coords.Type == Coordinate.Type;
-		}
-
-		public int? GetLevel(Buildables building)
-		{
-			int? output = 0;
-			if (building == Buildables.Null) return output;
-			if (Buildings == null) return output;
-			foreach (PropertyInfo prop in Buildings.GetType().GetProperties())
-			{
-				if (prop.Name == building.ToString())
-				{
-					output = (int?)prop.GetValue(Buildings);
-				}
-			}
-			if (output == 0)
-			{
-				if (Facilities == null) return output;
-				foreach (PropertyInfo prop in Facilities.GetType().GetProperties())
-				{
-					if (prop.Name == building.ToString())
-					{
-						output = (int?)prop.GetValue(Facilities);
-					}
-				}
-			}
-			return output;
-		}
-		public async Task GetTechs(OgameClient client)
-		{
-			var techs = await client.GetTechs(this);
-			Buildings = techs.Buildings;
-			Facilities = techs.Facilities;
-			Ships = techs.Ships;
-			Defences = techs.Defences;
-		}
-		public async Task GetBuildings(OgameClient client)
-		{
-			var techs = await client.GetTechs(this);
-			Buildings = techs.Buildings;
-		}
-		public async Task GetFacilities(OgameClient client)
-		{
-			var techs = await client.GetTechs(this);
-			Facilities = techs.Facilities;
-		}
-		public async Task GetShips(OgameClient client)
-		{
-			var techs = await client.GetTechs(this);
-			Ships = techs.Ships;
-		}
-		public async Task GetDefences(OgameClient client)
-		{
-			var techs = await client.GetTechs(this);
-			Defences = techs.Defences;
-		}
-		public async Task GetResources(OgameClient client)
+        private string GetCelestialCode()
         {
-			var resources = await client.GetResources(this);
-			Resources = resources;
-        }
-	}
-
-	public class Moon : Celestial
-	{
-		public bool HasLunarFacilities(Facilities facilities)
-		{
-			if (Facilities == null) return false;
-			return Facilities.LunarBase >= facilities.LunarBase
-				&& Facilities.SensorPhalanx >= facilities.SensorPhalanx
-				&& Facilities.JumpGate >= facilities.JumpGate
-				&& Facilities.Shipyard >= facilities.Shipyard
-				&& Facilities.RoboticsFactory >= facilities.RoboticsFactory;
-		}
-	}
-
-	public class Planet : Celestial
-	{
-        public Lifeforms? Lifeform { get; set; }
-        public LifeformBuildings? LifeformBuildings { get; set; }
-        public LifeformResearches? LifeformResearches { get; set; }
-        public bool Administrator { get; set; }
-		public bool Inactive { get; set; }
-		public bool Vacation { get; set; }
-		public bool StrongPlayer { get; set; }
-		public bool Newbie { get; set; }
-		public bool HonorableTarget { get; set; }
-		public bool Banned { get; set; }
-		public Player? Player { get; set; }
-		public Alliance? Alliance { get; set; }
-		public Temperature? Temperature { get; set; }
-		public Moon? Moon { get; set; }
-		public async Task GetResourcesProduction(OgameClient client)
-		{
-			var resourcesProduction = await client.GetResourcesProduction(this);
-			ResourcesProduction = resourcesProduction;
-		}
-		public async Task GetResourceSettings(OgameClient client)
-		{
-			var resourcesSettings = await client.GetResourceSettings(this);
-			ResourceSettings = resourcesSettings;
-		}
-		public async Task GetLifeformBuildings(OgameClient client)
-		{
-			var lifeformBuildings = await client.GetLifeformBuildings(this);
-			LifeformBuildings = lifeformBuildings;
-		}
-		public async Task GetLifeformResearches(OgameClient client)
-		{
-			var lifeformResearches = await client.GetLifeformResearches(this);
-			LifeformResearches = lifeformResearches;
-		}
-		public bool HasMines(Buildings buildings)
-		{
-			if (Buildings == null) return false;
-			return Buildings.MetalMine >= buildings.MetalMine
-				&& Buildings.CrystalMine >= buildings.CrystalMine
-				&& Buildings.DeuteriumSynthesizer >= buildings.DeuteriumSynthesizer;
-		}
-	}
-	public class ServerData
-	{
-		public string Name { get; set; }
-		public int Number { get; set; }
-		public string Language { get; set; }
-		public string Timezone { get; set; }
-		public string TimezoneOffset { get; set; }
-		public string Domain { get; set; }
-		public string Version { get; set; }
-		public int Speed { get; set; }
-		public int SpeedFleet { get; set; }
-		public int SpeedFleetPeaceful { get; set; }
-		public int SpeedFleetWar { get; set; }
-		public int SpeedFleetHolding { get; set; }
-		public int Galaxies { get; set; }
-		public int Systems { get; set; }
-		public bool ACS { get; set; }
-		public bool RapidFire { get; set; }
-		public bool DefToTF { get; set; }
-		public float DebrisFactor { get; set; }
-		public float DebrisFactorDef { get; set; }
-		public float RepairFactor { get; set; }
-		public int NewbieProtectionLimit { get; set; }
-		public int NewbieProtectionHigh { get; set; }
-		public float TopScore { get; set; }
-		public int BonusFields { get; set; }
-		public bool DonutGalaxy { get; set; }
-		public bool DonutSystem { get; set; }
-		public bool WfEnabled { get; set; }
-		public int WfMinimumRessLost { get; set; }
-		public int WfMinimumLossPercentage { get; set; }
-		public int WfBasicPercentageRepairable { get; set; }
-		public float GlobalDeuteriumSaveFactor { get; set; }
-		public int Bashlimit { get; set; }
-		public int ProbeCargo { get; set; }
-		public int ResearchDurationDivisor { get; set; }
-		public int DarkMatterNewAcount { get; set; }
-		public int CargoHyperspaceTechMultiplier { get; set; }
-	}
-
-	public class UserInfo
-	{
-		public int PlayerID { get; set; }
-		public string? PlayerName { get; set; }
-		public long Points { get; set; }
-		public long Rank { get; set; }
-		public long Total { get; set; }
-		public long HonourPoints { get; set; }
-        public PlayerClasses Class { get; set; }
-	}
-
-	public class Resources
-	{
-		public Resources(long metal = 0, long crystal = 0, long deuterium = 0, long? energy = null, long? darkmatter = null, long? population = null, long? food = null)
-		{
-			Metal = metal;
-			Crystal = crystal;
-			Deuterium = deuterium;
-			Energy = energy;
-			Darkmatter = darkmatter;
-			Population = Population;
-			Food = Food;
-		}
-		public long Metal { get; set; }
-		public long Crystal { get; set; }
-		public long Deuterium { get; set; }
-		public long? Energy { get; set; }
-		public long? Darkmatter { get; set; }
-		public long? Population { get; set; }
-		public long? Food { get; set; }
-        public long ConvertedDeuterium
-		{
-			get
+            return Type switch
             {
-				return GetConvertedDeuterium();
+                CelestialType.Planet => "P",
+                CelestialType.Debris => "DF",
+                CelestialType.Moon => "M",
+                CelestialType.DeepSpace => "DS",
+                _ => "",
+            };
+        }
+
+        public bool IsSame(Coordinate coord)
+        {
+            return Galaxy == coord.Galaxy
+                && System == coord.System
+                && Position == coord.Position
+                && Type == coord.Type;
+        }
+    }
+
+    public record Fields
+    {
+        public uint Built { get; init; }
+
+        public uint Total { get; init; }
+
+        public uint Free
+        {
+            get
+            {
+                return Total - Built;
             }
-		}
-		public long GetConvertedDeuterium(double metalRatio = 2.5, double crystalRatio = 1.5)
-		{
-			return (long)Math.Round((Metal / metalRatio) + (Crystal / crystalRatio) + Deuterium, 0, MidpointRounding.ToPositiveInfinity);
-		}
-
-		public long TotalResources
-		{
-			get
-			{
-				return Metal + Crystal + Deuterium;
-			}
-		}
-
-		public long StructuralIntegrity
-		{
-			get
-			{
-				return Metal + Crystal;
-			}
-		}
-
-		public override string ToString()
-		{
-			if (Energy != null && Darkmatter != null)
-				return $"M: {Metal:N0} C: {Crystal:N0} D: {Deuterium:N0} E: {Energy:N0} DM: {Darkmatter:N0}";
-			else
-				return $"M: {Metal:N0} C: {Crystal:N0} D: {Deuterium:N0}";
-		}
-
-		public bool IsEnoughFor(Resources cost, int times = 1, Resources? resToLeave = null)
-		{
-			var tempMet = Metal;
-			var tempCry = Crystal;
-			var tempDeut = Deuterium;
-			if (resToLeave != null)
-			{
-				tempMet -= resToLeave.Metal;
-				tempCry -= resToLeave.Crystal;
-				tempDeut -= resToLeave.Deuterium;
-			}
-			return cost.Metal * times <= tempMet && cost.Crystal * times <= tempCry && cost.Deuterium * times <= tempDeut;
-		}
-
-		public bool IsEmpty()
-		{
-			return Metal == 0 && Crystal == 0 && Deuterium == 0;
-		}
-
-		public Resources Sum(Resources resourcesToSum)
-		{
-			Resources output = new();
-			output.Metal = Metal + resourcesToSum.Metal;
-			output.Crystal = Crystal + resourcesToSum.Crystal;
-			output.Deuterium = Deuterium + resourcesToSum.Deuterium;
-
-			return output;
-		}
-
-		public Resources Difference(Resources resourcesToSubtract)
-		{
-			Resources output = new();
-			output.Metal = Metal - resourcesToSubtract.Metal;
-			if (output.Metal < 0)
-				output.Metal = 0;
-			output.Crystal = Crystal - resourcesToSubtract.Crystal;
-			if (output.Crystal < 0)
-				output.Crystal = 0;
-			output.Deuterium = Deuterium - resourcesToSubtract.Deuterium;
-			if (output.Deuterium < 0)
-				output.Deuterium = 0;
-
-			return output;
-		}
-	}
-
-	public class Buildings : IBuildable
-	{
-		public int MetalMine { get; set; }
-		public int CrystalMine { get; set; }
-		public int DeuteriumSynthesizer { get; set; }
-		public int SolarPlant { get; set; }
-		public int FusionReactor { get; set; }
-		public int SolarSatellite { get; set; }
-		public int MetalStorage { get; set; }
-		public int CrystalStorage { get; set; }
-		public int DeuteriumTank { get; set; }
-		public Buildings(
-			int metalMine = 0,
-			int crystalMine = 0,
-			int deuteriumSynthesizer = 0,
-			int solarPlant = 0,
-			int fusionReactor = 0,
-			int solarSatellite = 0,
-			int metalStorage = 0,
-			int crystalStorage = 0,
-			int deuteriumTank = 0
-		)
-        {
-			MetalMine = metalMine;
-			CrystalMine = crystalMine;
-			DeuteriumSynthesizer = deuteriumSynthesizer;
-			SolarPlant = solarPlant;
-			FusionReactor = fusionReactor;
-			SolarSatellite = solarSatellite;
-			MetalStorage = metalStorage;
-			CrystalStorage = crystalStorage;
-			DeuteriumTank = deuteriumTank;
         }
 
-		public override string ToString()
-		{
-			return $"M: {MetalMine} C: {CrystalMine} D: {DeuteriumSynthesizer} S: {SolarPlant} F: {FusionReactor}";
-		}
-
-		public int GetLevel(Buildables buildable)
-		{
-			int output = 0;
-			foreach (PropertyInfo prop in GetType().GetProperties())
-			{
-				if (prop.Name == buildable.ToString() && prop.GetValue(this) != null)
-				{
-					output = (int)prop.GetValue(this);
-				}
-			}
-			return output;
-		}
-
-		public Buildings SetLevel(Buildables buildable, int level)
-		{
-			foreach (PropertyInfo prop in GetType().GetProperties())
-			{
-				if (prop.Name == buildable.ToString() && prop != null)
-				{
-					prop.SetValue(this, level);
-				}
-			}
-			return this;
-		}
-	}
-
-	public class Facilities : IBuildable
-	{
-		public int RoboticsFactory { get; set; }
-		public int Shipyard { get; set; }
-		public int? ResearchLab { get; set; }
-		public int? AllianceDepot { get; set; }
-		public int? MissileSilo { get; set; }
-		public int? NaniteFactory { get; set; }
-		public int? Terraformer { get; set; }
-		public int? SpaceDock { get; set; }
-		public int? LunarBase { get; set; }
-		public int? SensorPhalanx { get; set; }
-		public int? JumpGate { get; set; }
-		public Facilities(
-			int roboticsFactory = 0,
-			int shipyard = 0,
-			int? researchLab = 0,
-			int? allianceDepot = 0,
-			int? missileSilo = 0,
-			int? naniteFactory = 0,
-			int? terraformer = 0,
-			int? spaceDock = 0,
-			int? lunarBase = 0,
-			int? sensorPhalanx = null,
-			int? jumpGate = null
-		)
-		{
-			RoboticsFactory = roboticsFactory;
-			Shipyard = shipyard;
-			ResearchLab = researchLab;
-			AllianceDepot = allianceDepot;
-			MissileSilo = missileSilo;
-			NaniteFactory = naniteFactory;
-			Terraformer = terraformer;
-			SpaceDock = spaceDock;
-			LunarBase = lunarBase;
-			SensorPhalanx = sensorPhalanx;
-			JumpGate = jumpGate;
-		}
-
-		public override string ToString()
-		{
-			return $"R: {RoboticsFactory} S: {Shipyard} L: {ResearchLab} M: {MissileSilo} N: {NaniteFactory}";
-		}
-	}
-
-	public class LifeformBuildings : IBuildable
-	{
-		public int? ResidentialSector { get; set; }
-		public int? BiosphereFarm { get; set; }
-		public int? ResearchCentre { get; set; }
-		public int? AcademyOfSciences { get; set; }
-		public int? NeuroCalibrationCentre { get; set; }
-		public int? HighEnergySmelting { get; set; }
-		public int? FoodSilo { get; set; }
-		public int? FusionPoweredProduction { get; set; }
-		public int? Skyscraper { get; set; }
-		public int? BiotechLab { get; set; }
-		public int? Metropolis { get; set; }
-		public int? PlanetaryShield { get; set; }
-
-        public LifeformBuildings(
-            int? residentialSector = 0,
-            int? biosphereFarm = 0,
-            int? researchCentre = 0,
-            int? academyOfSciences = 0,
-            int? neuroCalibrationCentre = 0,
-            int? highEnergySmelting = 0,
-            int? foodSilo = 0,
-            int? fusionPoweredProduction = 0,
-            int? skyscraper = 0,
-            int? biotechLab = 0,
-            int? metropolis = 0,
-            int? planetaryShield = 0
-        )
+        public bool IsFull
         {
-            ResidentialSector = residentialSector;
-            BiosphereFarm = biosphereFarm;
-            ResearchCentre = researchCentre;
-            AcademyOfSciences = academyOfSciences;
-            NeuroCalibrationCentre = neuroCalibrationCentre;
-            HighEnergySmelting = highEnergySmelting;
-            FoodSilo = foodSilo;
-            FusionPoweredProduction = fusionPoweredProduction;
-            Skyscraper = skyscraper;
-            BiotechLab = biotechLab;
-            Metropolis = metropolis;
-            PlanetaryShield = planetaryShield;
+            get
+            {
+                return Built == Total;
+            }
+        }
+
+        public override string ToString()
+        {
+            return Built.ToString() + "/" + Total.ToString();
         }
     }
 
-	public interface IBuildable
-	{
-		public int GetLevel(Buildables buildable)
-		{
-			int output = 0;
-			foreach (PropertyInfo prop in GetType().GetProperties())
-			{
-				if (prop.Name == buildable.ToString() && prop.GetValue(this) != null)
-				{
-					output = (int)prop.GetValue(this);
-				}
-			}
-			return output;
-		}
-
-		public IBuildable SetLevel(Buildables buildable, int level)
-		{
-			foreach (PropertyInfo prop in GetType().GetProperties())
-			{
-				if (prop.Name == buildable.ToString() && prop != null)
-				{
-					prop.SetValue(this, level);
-				}
-			}
-			return this;
-		}
-	}
-
-	public class Defences : IAmountable
-	{
-		public long RocketLauncher { get; set; }
-		public long LightLaser { get; set; }
-		public long HeavyLaser { get; set; }
-		public long GaussCannon { get; set; }
-		public long IonCannon { get; set; }
-		public long PlasmaTurret { get; set; }
-		public long SmallShieldDome { get; set; }
-		public long LargeShieldDome { get; set; }
-		public long AntiBallisticMissiles { get; set; }
-		public long InterplanetaryMissiles { get; set; }
-		public Defences(
-			long rocketLauncher = 0,
-			long lightLaser = 0,
-			long heavyLaser = 0,
-			long gaussCannon = 0,
-			long ionCannon = 0,
-			long plasmaTurret = 0,
-			long smallShieldDome = 0,
-			long largeShieldDome = 0,
-			long antiBallisticMissiles = 0,
-			long interplanetaryMissiles = 0
-        )
-        {
-			RocketLauncher = rocketLauncher;
-			LightLaser = lightLaser;
-			HeavyLaser = heavyLaser;
-			GaussCannon = gaussCannon;
-			IonCannon = ionCannon;
-			PlasmaTurret = plasmaTurret;
-			SmallShieldDome = smallShieldDome;
-			LargeShieldDome = largeShieldDome;
-			AntiBallisticMissiles = antiBallisticMissiles;
-			InterplanetaryMissiles= interplanetaryMissiles;
-		}
-	}
-
-	public interface IAmountable {
-		public int GetAmount(Buildables buildable)
-		{
-			int output = 0;
-			foreach (PropertyInfo prop in GetType().GetProperties())
-			{
-				if (prop.Name == buildable.ToString() && prop.GetValue(this) != null)
-				{
-					output = (int)prop.GetValue(this);
-				}
-			}
-			return output;
-		}
-		public bool SetAmount(Buildables buildable, long number)
-		{
-			foreach (PropertyInfo prop in this.GetType().GetProperties())
-			{
-				if (prop.Name == buildable.ToString())
-				{
-					prop.SetValue(this, number);
-					return true;
-				}
-			}
-			return false;
-		}
-	}
-
-	public class Ships : IAmountable
-	{
-		public long LightFighter { get; set; }
-		public long HeavyFighter { get; set; }
-		public long Cruiser { get; set; }
-		public long Battleship { get; set; }
-		public long Battlecruiser { get; set; }
-		public long Bomber { get; set; }
-		public long Destroyer { get; set; }
-		public long Deathstar { get; set; }
-		public long SmallCargo { get; set; }
-		public long LargeCargo { get; set; }
-		public long ColonyShip { get; set; }
-		public long Recycler { get; set; }
-		public long EspionageProbe { get; set; }
-		public long SolarSatellite { get; set; }
-		public long Crawler { get; set; }
-		public long Reaper { get; set; }
-		public long Pathfinder { get; set; }
-
-		public Ships(
-			long lightFighter = 0,
-			long heavyFighter = 0,
-			long cruiser = 0,
-			long battleship = 0,
-			long battlecruiser = 0,
-			long bomber = 0,
-			long destroyer = 0,
-			long deathstar = 0,
-			long smallCargo = 0,
-			long largeCargo = 0,
-			long colonyShip = 0,
-			long recycler = 0,
-			long espionageProbe = 0,
-			long solarSatellite = 0,
-			long crawler = 0,
-			long reaper = 0,
-			long pathfinder = 0
-		)
-		{
-			LightFighter = lightFighter;
-			HeavyFighter = heavyFighter;
-			Cruiser = cruiser;
-			Battleship = battleship;
-			Battlecruiser = battlecruiser;
-			Bomber = bomber;
-			Destroyer = destroyer;
-			Deathstar = deathstar;
-			SmallCargo = smallCargo;
-			LargeCargo = largeCargo;
-			ColonyShip = colonyShip;
-			Recycler = recycler;
-			EspionageProbe = espionageProbe;
-			SolarSatellite = solarSatellite;
-			Crawler = crawler;
-			Reaper = reaper;
-			Pathfinder = pathfinder;
-		}
-
-		public long GetFleetPoints()
-		{
-			long output = 0;
-			output += LightFighter * 4;
-			output += HeavyFighter * 10;
-			output += Cruiser * 29;
-			output += Battleship * 60;
-			output += Battlecruiser * 85;
-			output += Bomber * 90;
-			output += Destroyer * 125;
-			output += Deathstar * 10000;
-			output += SmallCargo * 4;
-			output += LargeCargo * 12;
-			output += ColonyShip * 40;
-			output += Recycler * 18;
-			output += EspionageProbe * 1;
-			output += Reaper * 160;
-			output += Pathfinder * 31;
-			return output;
-		}
-
-		public bool HasMovableFleet()
-		{
-			return LightFighter != 0
-				|| HeavyFighter != 0
-				|| Cruiser != 0
-				|| Battleship != 0
-				|| Battlecruiser != 0
-				|| Bomber != 0
-				|| Destroyer != 0
-				|| Deathstar != 0
-				|| SmallCargo != 0
-				|| LargeCargo != 0
-				|| ColonyShip != 0
-				|| Recycler != 0
-				|| EspionageProbe != 0
-				|| SolarSatellite != 0
-				|| Crawler != 0
-				|| Reaper != 0
-				|| Pathfinder != 0;
-		}
-
-		public Ships GetMovableShips()
-		{
-			Ships tempShips = this;
-			tempShips.SolarSatellite = 0;
-			tempShips.Crawler = 0;
-			return tempShips;
-		}
-
-		public Ships Add(Buildables buildable, long quantity)
-		{
-			foreach (PropertyInfo prop in this.GetType().GetProperties())
-			{
-				if (prop.Name == buildable.ToString() && prop.GetValue(this) != null)
-				{
-					prop.SetValue(this, (long)prop.GetValue(this) + quantity);
-				}
-			}
-			return this;
-		}
-
-		public Ships Remove(Buildables buildable, int quantity)
-		{
-			foreach (PropertyInfo prop in this.GetType().GetProperties())
-			{
-				if (prop.Name == buildable.ToString() && prop.GetValue(this) != null)
-				{
-					long val = (long)prop.GetValue(this);
-					if (val >= quantity)
-						prop.SetValue(this, val);
-					else
-						prop.SetValue(this, 0);
-				}
-			}
-			return this;
-		}
-
-		public bool HasAtLeast(Ships ships, long times = 1)
-		{
-			foreach (PropertyInfo prop in this.GetType().GetProperties())
-			{
-				if (prop.GetValue(this) != null && prop.GetValue(ships) != null && (long)prop.GetValue(this) * times < (long)prop.GetValue(ships))
-				{
-					return false;
-				}
-			}
-			return true;
-		}
-
-		public override string ToString()
-		{
-			string output = "";
-			foreach (PropertyInfo prop in this.GetType().GetProperties())
-			{
-				if (prop.GetValue(this) == null || (long)prop.GetValue(this) == 0)
-					continue;
-				output += $"{prop.Name}: {prop.GetValue(this)}; ";
-			}
-			return output[0..^2];
-		}
-	}
-
-	public class FleetPrediction
-	{
-		public long Time { get; set; }
-		public long Fuel { get; set; }
-	}
-
-	public class Fleet
-	{
-		public Missions Mission { get; set; }
-		public bool ReturnFlight { get; set; }
-		public bool InDeepSpace { get; set; }
-		public int ID { get; set; }
-		public Resources Resources { get; set; }
-		public Coordinate Origin { get; set; }
-		public Coordinate Destination { get; set; }
-		public Ships Ships { get; set; }
-		public DateTime StartTime { get; set; }
-		public DateTime ArrivalTime { get; set; }
-		public DateTime? BackTime { get; set; }
-		public int ArriveIn { get; set; }
-		public int? BackIn { get; set; }
-		public int? UnionID { get; set; }
-		public int TargetPlanetID { get; set; }
-	}
-
-	public class AttackerFleet
-	{
-		public int ID { get; set; }
-		public Missions MissionType { get; set; }
-		public Coordinate Origin { get; set; }
-		public Coordinate Destination { get; set; }
-		public string DestinationName { get; set; }
-		public DateTime ArrivalTime { get; set; }
-		public int ArriveIn { get; set; }
-		public string AttackerName { get; set; }
-		public int AttackerID { get; set; }
-		public int UnionID { get; set; }
-		public int Missiles { get; set; }
-		public Ships Ships { get; set; }
-
-		public bool IsOnlyProbes()
-		{
-			if (Ships.EspionageProbe != 0)
-			{
-				return Ships.Battlecruiser == 0
-					&& Ships.Battleship == 0
-					&& Ships.Bomber == 0
-					&& Ships.ColonyShip == 0
-					&& Ships.Cruiser == 0
-					&& Ships.Deathstar == 0
-					&& Ships.Destroyer == 0
-					&& Ships.HeavyFighter == 0
-					&& Ships.LargeCargo == 0
-					&& Ships.LightFighter == 0
-					&& Ships.Pathfinder == 0
-					&& Ships.Reaper == 0
-					&& Ships.Recycler == 0
-					&& Ships.SmallCargo == 0;
-			}
-			else
-				return false;
-		}
-	}
-	public class Slots
-	{
-		public int InUse { get; set; }
-		public int Total { get; set; }
-		public int ExpInUse { get; set; }
-		public int ExpTotal { get; set; }
-		public int Free
-		{
-			get
-			{
-				return Total - InUse;
-			}
-		}
-		public int ExpFree
-		{
-			get
-			{
-				return ExpTotal - ExpInUse;
-			}
-		}
-	}
-
-	public class Researches : IBuildable
-	{
-		public int EnergyTechnology { get; set; }
-		public int LaserTechnology { get; set; }
-		public int IonTechnology { get; set; }
-		public int HyperspaceTechnology { get; set; }
-		public int PlasmaTechnology { get; set; }
-		public int CombustionDrive { get; set; }
-		public int ImpulseDrive { get; set; }
-		public int HyperspaceDrive { get; set; }
-		public int EspionageTechnology { get; set; }
-		public int ComputerTechnology { get; set; }
-		public int Astrophysics { get; set; }
-		public int IntergalacticResearchNetwork { get; set; }
-		public int GravitonTechnology { get; set; }
-		public int WeaponsTechnology { get; set; }
-		public int ShieldingTechnology { get; set; }
-		public int ArmourTechnology { get; set; }
-		public Researches(
-			int energyTechnology = 0,
-			int laserTechnology = 0,
-			int ionTechnology = 0,
-			int hyperspaceTechnology = 0,
-			int plasmaTechnology = 0,
-			int combustionDrive = 0,
-			int impulseDrive = 0,
-			int hyperspaceDrive = 0,
-			int espionageTechnology = 0,
-			int computerTechnology = 0,
-			int astrophysics = 0,
-			int intergalacticResearchNetwork = 0,
-			int gravitonTechnology = 0,
-			int weaponsTechnology = 0,
-			int shieldingTechnology = 0,
-			int armourTechnology = 0
-		)
-        {
-			EnergyTechnology = energyTechnology;
-			LaserTechnology = laserTechnology;
-			IonTechnology = ionTechnology;
-			HyperspaceTechnology = hyperspaceTechnology;
-			PlasmaTechnology = plasmaTechnology;
-			CombustionDrive = combustionDrive;
-			ImpulseDrive = impulseDrive;
-			HyperspaceDrive = hyperspaceDrive;
-			EspionageTechnology = espionageTechnology;
-			ComputerTechnology = computerTechnology;
-			Astrophysics = astrophysics;
-			IntergalacticResearchNetwork = intergalacticResearchNetwork;
-			GravitonTechnology = gravitonTechnology;
-			WeaponsTechnology = weaponsTechnology;
-			ShieldingTechnology = shieldingTechnology;
-			ArmourTechnology = armourTechnology;
-		}
-	}
-
-	public class LifeformResearches : IBuildable
-	{
-		public int IntergalacticEnvoys { get; set; }
-		public int HighPerformanceExtractors { get; set; }
-		public int FusionDrives { get; set; }
-		public int StealthFieldGenerator { get; set; }
-		public int OrbitalDen { get; set; }
-		public int ResearchAI { get; set; }
-		public int HighPerformanceTerraformer { get; set; }
-		public int EnhancedProductionTechnologies { get; set; }
-		public int LightFighterMkII { get; set; }
-		public int CruiserMkII { get; set; }
-		public int ImprovedLabTechnology { get; set; }
-		public int PlasmaTerraformer { get; set; }
-		public int LowTemperatureDrives { get; set; }
-		public int BomberMkII { get; set; }
-		public int DestroyerMkII { get; set; }
-		public int BattlecruiserMkII { get; set; }
-		public int RobotAssistants { get; set; }
-		public int Supercomputer { get; set; }
-		public LifeformResearches(
-			int intergalacticEnvoys = 0,
-			int highPerformanceExtractors = 0,
-			int fusionDrives = 0,
-			int stealthFieldGenerator = 0,
-			int orbitalDen = 0,
-			int researchAI = 0,
-			int highPerformanceTerraformer = 0,
-			int enhancedProductionTechnologies = 0,
-			int lightFighterMkII = 0,
-			int cruiserMkII = 0,
-			int improvedLabTechnology = 0,
-			int plasmaTerraformer = 0,
-			int lowTemperatureDrives = 0,
-			int bomberMkII = 0,
-			int destroyerMkII = 0,
-			int battlecruiserMkII = 0,
-			int robotAssistants = 0,
-			int supercomputer = 0
-		)
-		{
-			IntergalacticEnvoys = intergalacticEnvoys;
-			HighPerformanceExtractors = highPerformanceExtractors;
-			FusionDrives = fusionDrives;
-			StealthFieldGenerator = stealthFieldGenerator;
-			OrbitalDen = orbitalDen;
-			ResearchAI = researchAI;
-			HighPerformanceTerraformer = highPerformanceTerraformer;
-			EnhancedProductionTechnologies = enhancedProductionTechnologies;
-			LightFighterMkII = lightFighterMkII;
-			CruiserMkII = cruiserMkII;
-			ImprovedLabTechnology = improvedLabTechnology;
-			PlasmaTerraformer = plasmaTerraformer;
-			LowTemperatureDrives = lowTemperatureDrives;
-			BomberMkII = bomberMkII;
-			DestroyerMkII = destroyerMkII;
-			BattlecruiserMkII = battlecruiserMkII;
-			RobotAssistants = robotAssistants;
-			Supercomputer = supercomputer;
-		}
-	}
-
-	public class Production
-	{
-		public int ID { get; set; }
-		public int Nbr { get; set; }
-	}
-
-	public class Constructions
-	{
-		public int BuildingID { get; set; }
-		public int BuildingCountdown { get; set; }
-		public int ResearchID { get; set; }
-		public int ResearchCountdown { get; set; }
-	}
-
-	public class GalaxyDebris : Debris
-	{
-		public long RecyclersNeeded { get; set; }
-	}
-
-	public class ExpeditionDebris : Debris
-	{
-		public long PathfindersNeeded { get; set; }		
-	}
-	public class Debris
+    public record Temperature
     {
-		public long Metal { get; set; }
-		public long Crystal { get; set; }
-		public Resources Resources
-		{
-			get
-			{
-				return new Resources
-				{
-					Metal = Metal,
-					Crystal = Crystal,
-					Deuterium = 0,
-					Darkmatter = null,
-					Energy = null
-				};
-			}
-		}
-	}
+        public int Min { get; init; }
 
-	public class Player
-	{
-		public int ID { get; set; }
-		public string Name { get; set; }
-		public int Rank { get; set; }
-		public bool IsBandit { get; set; }
-		public bool IsStarlord { get; set; }
-		public PlayerClasses Class { get; set; }
-	}
+        public int Max { get; init; }
 
-	public class Alliance
-	{
-		public int ID { get; set; }
-		public string Name { get; set; }
-		public int Rank { get; set; }
-		public int Member { get; set; }
-		public AllianceClasses Class { get; set; }
-	}
-
-	public class GalaxyInfo
-	{
-		public int Galaxy { get; set; }
-		public int System { get; set; }
-		public List<Planet>? Planets { get; set; }
-		public ExpeditionDebris? ExpeditionDebris { get; set; }
-	}
-
-	public class FleetHypotesis
-	{
-		public Celestial Origin { get; set; }
-		public Coordinate Destination { get; set; }
-		public Ships Ships { get; set; }
-		public Missions Mission { get; set; }
-		public decimal Speed { get; set; }
-		public long Duration { get; set; }
-		public long Fuel { get; set; }
-	}
-
-	public class Staff
-	{
-		public Staff()
-		{
-			Commander = false;
-			Admiral = false;
-			Engineer = false;
-			Geologist = false;
-			Technocrat = false;
-		}
-		public bool Commander { get; set; }
-		public bool Admiral { get; set; }
-		public bool Engineer { get; set; }
-		public bool Geologist { get; set; }
-		public bool Technocrat { get; set; }
-		public bool IsFull
-		{
-			get
-			{
-				return Commander && Admiral && Engineer && Geologist && Technocrat;
-			}
-		}
-	}
-
-	public class Resource : BaseResource
-	{
-		public long StorageCapacity { get; set; }
-		public long CurrentProduction { get; set; }
-		public long DenCapacity { get; set; }
-	}
-
-	public class Energy : BaseResource
-	{
-		public long CurrentProduction { get; set; }
-		public long Consumption { get; set; }
-	}
-
-	public class Darkmatter : BaseResource
-	{
-		public long Purchased { get; set; }
-		public long Found { get; set; }
-	}
-
-	public class Population : BaseResource
-	{
-		public long StorageCapacity { get; set; }
-		public long SafeCapacity { get; set; }
-		public float GrowthRate { get; set; }
-		public long CapableToFeed { get; set; }
-		public long NeedFood { get; set; }
-		public float SingleFoodCOnsumption { get; set; }
-	}
-
-	public class Food : BaseResource
-	{
-		public long StorageCapacity { get; set; }
-		public float CapableToFeed { get; set; }
-		public long CurrentProduction { get; set; }
-		public long ExtraProduction { get; set; }
-		public long Consumption { get; set; }
-	}
-
-	public abstract class BaseResource
-    {
-		public long Available { get; set; }
-	}
-
-	public class ResourcesProduction
-	{
-		public Resource Metal { get; set; }
-		public Resource Crystal { get; set; }
-		public Resource Deuterium { get; set; }
-		public Energy Energy { get; set; }
-		public Darkmatter Darkmatter { get; set; }
-		public Population? Population { get; set; }
-		public Food? Food { get; set; }
-		public ResourcesProduction(
-			Resource metal,
-			Resource crystal,
-			Resource deuterium,
-			Energy energy,
-			Darkmatter darkmatter,
-			Population population = null,
-			Food food = null
-		)
+        public double Average
         {
-			Metal = metal;
-			Crystal = crystal;
-			Deuterium = deuterium;
-			Energy = energy;
-			Darkmatter = darkmatter;
-			Population = population;
-			Food = food;
+            get
+            {
+                return (Min + Max) / 2d;
+            }
         }
-	}
 
-	public class Techs
-    {
-		public Buildings Buildings { get; set; }
-		public Facilities Facilities { get; set; }
-		public Ships Ships { get; set; }
-		public Defences Defences { get; set; }
-		public Researches Researches { get; set; }
-        public LifeformBuildings? LifeformBuildings { get; set; }
-        public LifeformResearches? LifeformResearches { get; set; }
+        public override string ToString()
+        {
+            return Min.ToString() + "°C ~ " + Max.ToString() + "°C";
+        }
     }
 
-	public class AutoMinerSettings
-	{
-		public bool OptimizeForStart { get; set; }
-		public bool PrioritizeRobotsAndNanites { get; set; }
-		public float MaxDaysOfInvestmentReturn { get; set; }
-		public int DepositHours { get; set; }
-		public bool BuildDepositIfFull { get; set; }
-		public int DeutToLeaveOnMoons { get; set; }
+    public record ResourceSettings
+    {
+        public ResourceSettingsPercent MetalMine { get; set; }
 
-		public AutoMinerSettings()
-		{
-			OptimizeForStart = true;
-			PrioritizeRobotsAndNanites = false;
-			MaxDaysOfInvestmentReturn = 36500;
-			DepositHours = 6;
-			BuildDepositIfFull = false;
-			DeutToLeaveOnMoons = 1000000;
-		}
-	}
+        public ResourceSettingsPercent CrystalMine { get; set; }
+
+        public ResourceSettingsPercent DeuteriumSynthesizer { get; set; }
+
+        public ResourceSettingsPercent SolarPlant { get; set; }
+
+        public ResourceSettingsPercent FusionReactor { get; set; }
+
+        public ResourceSettingsPercent SolarSatellite { get; set; }
+
+        public ResourceSettingsPercent Crawler { get; set; }
+    }
+
+    public record Celestial
+    {
+        public uint Id { get; init; }
+
+        public string Img { get; init; } = string.Empty;
+
+        public string Name { get; init; } = string.Empty;
+
+        public uint Diameter { get; init; }
+
+        public uint Activity { get; init; }
+
+        public Coordinate Coordinate { get; init; } = new();
+
+        public Fields Fields { get; init; } = new();
+
+        public Resources Resources { get; set; } = new();
+
+        public Ships Ships { get; set; } = new();
+
+        public Defences Defences { get; set; } = new();
+
+        public Buildings Buildings { get; set; } = new();
+
+        public Facilities Facilities { get; set; } = new();
+
+        public List<Production> Productions { get; init; } = new();
+
+        public Constructions Constructions { get; init; } = new();
+
+        public ResourceSettings ResourceSettings { get; set; } = new();
+
+        public ResourcesProduction ResourcesProduction { get; set; } = new();
+
+        public GalaxyDebris Debris { get; init; } = new();
+
+        public override string ToString()
+        {
+            return $"{Name} {Coordinate}";
+        }
+
+        public bool HasProduction()
+        {
+            if (Productions == null)
+            {
+                return false;
+            }
+
+            return Productions.Count != 0;
+        }
+
+        internal bool HasConstruction()
+        {
+            if (Constructions == null)
+            {
+                return false;
+            }
+
+            return Constructions.BuildingId != (int)Buildable.Null;
+        }
+
+        public bool HasCoords(Coordinate coords)
+        {
+            if (Coordinate == null)
+            {
+                return false;
+            }
+
+            return coords.Galaxy == Coordinate.Galaxy
+                && coords.System == Coordinate.System
+                && coords.Position == Coordinate.Position
+                && coords.Type == Coordinate.Type;
+        }
+
+        public uint GetLevel(Buildable building)
+        {
+            var output = 0u;
+
+            if (building == Buildable.Null)
+            {
+                return output;
+            }
+
+            if (Buildings == null)
+            {
+                return output;
+            }
+
+            foreach (PropertyInfo prop in Buildings.GetType().GetProperties())
+            {
+                if (prop.Name == building.ToString())
+                {
+                    output = (uint)prop.GetValue(Buildings);
+                }
+            }
+
+            if (output == 0)
+            {
+                if (Facilities == null)
+                {
+                    return output;
+                }
+
+                foreach (PropertyInfo prop in Facilities.GetType().GetProperties())
+                {
+                    if (prop.Name == building.ToString())
+                    {
+                        output = (uint)prop.GetValue(Facilities);
+                    }
+                }
+            }
+
+            return output;
+        }
+
+        public async Task GetTechs(OgameClient client)
+        {
+            var techs = await client.GetTechs(this);
+            Buildings = techs.Buildings;
+            Facilities = techs.Facilities;
+            Ships = techs.Ships;
+            Defences = techs.Defences;
+        }
+
+        public async Task GetBuildings(OgameClient client)
+        {
+            var techs = await client.GetTechs(this);
+            Buildings = techs.Buildings;
+        }
+
+        public async Task GetFacilities(OgameClient client)
+        {
+            var techs = await client.GetTechs(this);
+            Facilities = techs.Facilities;
+        }
+
+        public async Task GetShips(OgameClient client)
+        {
+            var techs = await client.GetTechs(this);
+            Ships = techs.Ships;
+        }
+
+        public async Task GetDefences(OgameClient client)
+        {
+            var techs = await client.GetTechs(this);
+            Defences = techs.Defences;
+        }
+
+        public async Task GetResources(OgameClient client)
+        {
+            var resources = await client.GetResources(this);
+            Resources = resources;
+        }
+    }
+
+    public record Moon : Celestial
+    {
+        public bool HasLunarFacilities(Facilities facilities)
+        {
+            if (Facilities == null)
+            {
+                return false;
+            }
+
+            return Facilities.LunarBase >= facilities.LunarBase
+                && Facilities.SensorPhalanx >= facilities.SensorPhalanx
+                && Facilities.JumpGate >= facilities.JumpGate
+                && Facilities.Shipyard >= facilities.Shipyard
+                && Facilities.RoboticsFactory >= facilities.RoboticsFactory;
+        }
+    }
+
+    public record Planet : Celestial
+    {
+        public Lifeform Lifeform { get; init; }
+
+        public LifeformBuildings LifeformBuildings { get; set; } = new();
+
+        public LifeformResearches LifeformResearches { get; set; } = new();
+
+        public bool Administrator { get; init; }
+
+        public bool Inactive { get; init; }
+
+        public bool Vacation { get; init; }
+
+        public bool StrongPlayer { get; init; }
+
+        public bool Newbie { get; init; }
+
+        public bool HonorableTarget { get; init; }
+
+        public bool Banned { get; init; }
+
+        public Player Player { get; init; } = new();
+
+        public Alliance Alliance { get; init; } = new();
+
+        public Temperature Temperature { get; init; } = new();
+
+        public Moon Moon { get; init; } = new();
+
+        public async Task GetResourcesProduction(OgameClient client)
+        {
+            var resourcesProduction = await client.GetResourcesProduction(this);
+            ResourcesProduction = resourcesProduction;
+        }
+
+        public async Task GetResourceSettings(OgameClient client)
+        {
+            var resourcesSettings = await client.GetResourceSettings(this);
+            ResourceSettings = resourcesSettings;
+        }
+
+        public async Task GetLifeformBuildings(OgameClient client)
+        {
+            var lifeformBuildings = await client.GetLifeformBuildings(this);
+            LifeformBuildings = lifeformBuildings;
+        }
+
+        public async Task GetLifeformResearches(OgameClient client)
+        {
+            var lifeformResearches = await client.GetLifeformResearches(this);
+            LifeformResearches = lifeformResearches;
+        }
+
+        public bool HasMines(Buildings buildings)
+        {
+            if (Buildings == null)
+            {
+                return false;
+            }
+
+            return Buildings.MetalMine >= buildings.MetalMine
+                && Buildings.CrystalMine >= buildings.CrystalMine
+                && Buildings.DeuteriumSynthesizer >= buildings.DeuteriumSynthesizer;
+        }
+    }
+    
+    public record ServerData
+    {
+        public string Name { get; init; } = string.Empty;
+
+        public uint Number { get; init; }
+
+        public string Language { get; init; } = string.Empty;
+
+        public string Timezone { get; init; } = string.Empty;
+
+        public string TimezoneOffset { get; init; } = string.Empty;
+
+        public string Domain { get; init; } = string.Empty;
+
+        public string Version { get; init; } = string.Empty;
+
+        public uint Speed { get; init; }
+
+        public uint SpeedFleet { get; init; }
+
+        public uint SpeedFleetPeaceful { get; init; }
+
+        public uint SpeedFleetWar { get; init; }
+
+        public uint SpeedFleetHolding { get; init; }
+
+        public uint Galaxies { get; init; }
+
+        public uint Systems { get; init; }
+
+        public bool ACS { get; init; }
+
+        public bool RapidFire { get; init; }
+
+        public bool DefToTF { get; init; }
+
+        public double DebrisFactor { get; init; }
+
+        public double DebrisFactorDef { get; init; }
+
+        public double RepairFactor { get; init; }
+
+        public uint NewbieProtectionLimit { get; init; }
+
+        public uint NewbieProtectionHigh { get; init; }
+
+        public double TopScore { get; init; }
+
+        public uint BonusFields { get; init; }
+
+        public bool DonutGalaxy { get; init; }
+
+        public bool DonutSystem { get; init; }
+
+        public bool WfEnabled { get; init; }
+
+        public uint WfMinimumRessLost { get; init; }
+
+        public uint WfMinimumLossPercentage { get; init; }
+
+        public uint WfBasicPercentageRepairable { get; init; }
+
+        public double GlobalDeuteriumSaveFactor { get; init; }
+
+        public uint Bashlimit { get; init; }
+
+        public uint ProbeCargo { get; init; }
+
+        public double ResearchDurationDivisor { get; init; }
+
+        public uint DarkMatterNewAcount { get; init; }
+
+        public uint CargoHyperspaceTechMultiplier { get; init; }
+    }
+
+    public record UserInfo
+    {
+        public uint PlayerId { get; init; }
+
+        public string PlayerName { get; init; } = string.Empty;
+
+        public ulong Points { get; init; }
+
+        public ulong Rank { get; init; }
+
+        public ulong Total { get; init; }
+
+        public ulong HonourPoints { get; init; }
+
+        public PlayerClass Class { get; init; }
+    }
+
+    public record Resources
+    {
+        public ulong Metal { get; init; }
+
+        public ulong Crystal { get; init; }
+
+        public ulong Deuterium { get; init; }
+
+        public ulong Energy { get; init; }
+
+        public ulong Darkmatter { get; init; }
+
+        public ulong Population { get; init; }
+
+        public ulong Food { get; init; }
+
+        public ulong ConvertedDeuterium
+        {
+            get
+            {
+                return GetConvertedDeuterium();
+            }
+        }
+
+        public ulong GetConvertedDeuterium(double metalRatio = 2.5, double crystalRatio = 1.5)
+        {
+            return (ulong)Math.Round((Metal / metalRatio) + (Crystal / crystalRatio) + Deuterium, 0, MidpointRounding.ToPositiveInfinity);
+        }
+
+        public ulong TotalResources
+        {
+            get
+            {
+                return Metal + Crystal + Deuterium;
+            }
+        }
+
+        public ulong StructuralIntegrity
+        {
+            get
+            {
+                return Metal + Crystal;
+            }
+        }
+
+        public override string ToString()
+        {
+            if (Energy != 0 && Darkmatter != 0)
+            {
+                return $"M: {Metal:N0} C: {Crystal:N0} D: {Deuterium:N0} E: {Energy:N0} DM: {Darkmatter:N0}";
+            }
+
+            return $"M: {Metal:N0} C: {Crystal:N0} D: {Deuterium:N0}";
+        }
+
+        public bool IsEnoughFor(Resources cost, uint times = 1, Resources? resToLeave = null)
+        {
+            var tempMet = Metal;
+            var tempCry = Crystal;
+            var tempDeut = Deuterium;
+
+            if (resToLeave != null)
+            {
+                tempMet -= resToLeave.Metal;
+                tempCry -= resToLeave.Crystal;
+                tempDeut -= resToLeave.Deuterium;
+            }
+
+            return cost.Metal * times <= tempMet && cost.Crystal * times <= tempCry && cost.Deuterium * times <= tempDeut;
+        }
+
+        public bool IsEmpty()
+        {
+            return Metal == 0 && Crystal == 0 && Deuterium == 0;
+        }
+
+        public static Resources operator +(Resources a, Resources b)
+        {
+            return new()
+            {
+                Metal = a.Metal + b.Metal,
+                Crystal = a.Crystal + b.Crystal,
+                Deuterium = a.Deuterium + b.Deuterium,
+            };
+        }
+
+        public static Resources operator -(Resources a, Resources b)
+        {
+            return new()
+            {
+                Metal = Math.Max(a.Metal - b.Metal, 0),
+                Crystal = Math.Max(a.Crystal - b.Crystal, 0),
+                Deuterium = Math.Max(a.Deuterium - b.Deuterium, 0),
+            };
+        }
+    }
+
+    public record Buildings : IBuildable
+    {
+        public uint MetalMine { get; init; }
+
+        public uint CrystalMine { get; init; }
+
+        public uint DeuteriumSynthesizer { get; init; }
+
+        public uint SolarPlant { get; init; }
+
+        public uint FusionReactor { get; init; }
+
+        public uint SolarSatellite { get; init; }
+
+        public uint MetalStorage { get; init; }
+
+        public uint CrystalStorage { get; init; }
+
+        public uint DeuteriumTank { get; init; }
+
+        public uint GetLevel(Buildable buildable)
+        {
+            uint output = 0;
+            foreach (PropertyInfo prop in GetType().GetProperties())
+            {
+                if (prop.Name == buildable.ToString() && prop.GetValue(this) != null)
+                {
+                    output = (uint)prop.GetValue(this);
+                }
+            }
+            return output;
+        }
+
+        public Buildings SetLevel(Buildable buildable, uint level)
+        {
+            foreach (PropertyInfo prop in GetType().GetProperties())
+            {
+                if (prop.Name == buildable.ToString() && prop != null)
+                {
+                    prop.SetValue(this, level);
+                }
+            }
+            return this;
+        }
+    }
+
+    public record Facilities : IBuildable
+    {
+        public uint RoboticsFactory { get; init; }
+
+        public uint Shipyard { get; init; }
+
+        public uint ResearchLab { get; init; }
+
+        public uint AllianceDepot { get; init; }
+
+        public uint MissileSilo { get; init; }
+
+        public uint NaniteFactory { get; init; }
+
+        public uint Terraformer { get; init; }
+
+        public uint SpaceDock { get; init; }
+
+        public uint LunarBase { get; init; }
+
+        public uint SensorPhalanx { get; init; }
+
+        public uint JumpGate { get; init; }
+    }
+
+    public record LifeformBuildings : IBuildable
+    {
+        public uint ResidentialSector { get; init; }
+
+        public uint BiosphereFarm { get; init; }
+
+        public uint ResearchCentre { get; init; }
+
+        public uint AcademyOfSciences { get; init; }
+
+        public uint NeuroCalibrationCentre { get; init; }
+
+        public uint HighEnergySmelting { get; init; }
+
+        public uint FoodSilo { get; init; }
+
+        public uint FusionPoweredProduction { get; init; }
+
+        public uint Skyscraper { get; init; }
+
+        public uint BiotechLab { get; init; }
+
+        public uint Metropolis { get; init; }
+
+        public uint PlanetaryShield { get; init; }
+    }
+
+    public interface IBuildable
+    {
+        public uint GetLevel(Buildable buildable)
+        {
+            uint output = 0;
+            foreach (PropertyInfo prop in GetType().GetProperties())
+            {
+                if (prop.Name == buildable.ToString() && prop.GetValue(this) != null)
+                {
+                    output = (uint)prop.GetValue(this);
+                }
+            }
+            return output;
+        }
+
+        public IBuildable SetLevel(Buildable buildable, uint level)
+        {
+            foreach (PropertyInfo prop in GetType().GetProperties())
+            {
+                if (prop.Name == buildable.ToString() && prop != null)
+                {
+                    prop.SetValue(this, level);
+                }
+            }
+            return this;
+        }
+    }
+
+    public record Defences : IAmountable
+    {
+        public ulong RocketLauncher { get; init; }
+
+        public ulong LightLaser { get; init; }
+
+        public ulong HeavyLaser { get; init; }
+
+        public ulong GaussCannon { get; init; }
+
+        public ulong IonCannon { get; init; }
+
+        public ulong PlasmaTurret { get; init; }
+
+        public ulong SmallShieldDome { get; init; }
+
+        public ulong LargeShieldDome { get; init; }
+
+        public ulong AntiBallisticMissiles { get; init; }
+
+        public ulong InterplanetaryMissiles { get; init; }
+    }
+
+    public interface IAmountable
+    {
+        public int GetAmount(Buildable buildable)
+        {
+            int output = 0;
+            foreach (PropertyInfo prop in GetType().GetProperties())
+            {
+                if (prop.Name == buildable.ToString() && prop.GetValue(this) != null)
+                {
+                    output = (int)prop.GetValue(this);
+                }
+            }
+            return output;
+        }
+        public bool SetAmount(Buildable buildable, long number)
+        {
+            foreach (PropertyInfo prop in this.GetType().GetProperties())
+            {
+                if (prop.Name == buildable.ToString())
+                {
+                    prop.SetValue(this, number);
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    public record Ships : IAmountable
+    {
+        public ulong LightFighter { get; init; }
+
+        public ulong HeavyFighter { get; init; }
+
+        public ulong Cruiser { get; init; }
+
+        public ulong Battleship { get; init; }
+
+        public ulong Battlecruiser { get; init; }
+
+        public ulong Bomber { get; init; }
+
+        public ulong Destroyer { get; init; }
+
+        public ulong Deathstar { get; init; }
+
+        public ulong SmallCargo { get; init; }
+
+        public ulong LargeCargo { get; init; }
+
+        public ulong ColonyShip { get; init; }
+
+        public ulong Recycler { get; init; }
+
+        public ulong EspionageProbe { get; init; }
+
+        public ulong SolarSatellite { get; init; }
+
+        public ulong Crawler { get; init; }
+
+        public ulong Reaper { get; init; }
+
+        public ulong Pathfinder { get; init; }
+
+        public Ships(Ships ships)
+        {
+            LightFighter = ships.LightFighter;
+            HeavyFighter = ships.HeavyFighter;
+            Cruiser = ships.Cruiser;
+            Battleship = ships.Battleship;
+            Battlecruiser = ships.Battlecruiser;
+            Bomber = ships.Bomber;
+            Destroyer = ships.Destroyer;
+            Deathstar = ships.Deathstar;
+            SmallCargo = ships.SmallCargo;
+            LargeCargo = ships.LargeCargo;
+            ColonyShip = ships.ColonyShip;
+            Recycler = ships.Recycler;
+            EspionageProbe = ships.EspionageProbe;
+            SolarSatellite = ships.SolarSatellite;
+            Crawler = ships.Crawler;
+            Reaper = ships.Reaper;
+            Pathfinder = ships.Pathfinder;
+        }
+
+        public ulong GetFleetPoints()
+        {
+            var output = 0ul;
+            output += LightFighter * 4;
+            output += HeavyFighter * 10;
+            output += Cruiser * 29;
+            output += Battleship * 60;
+            output += Battlecruiser * 85;
+            output += Bomber * 90;
+            output += Destroyer * 125;
+            output += Deathstar * 10000;
+            output += SmallCargo * 4;
+            output += LargeCargo * 12;
+            output += ColonyShip * 40;
+            output += Recycler * 18;
+            output += EspionageProbe * 1;
+            output += Reaper * 160;
+            output += Pathfinder * 31;
+            return output;
+        }
+
+        public bool HasMovableFleet()
+        {
+            return LightFighter != 0
+                || HeavyFighter != 0
+                || Cruiser != 0
+                || Battleship != 0
+                || Battlecruiser != 0
+                || Bomber != 0
+                || Destroyer != 0
+                || Deathstar != 0
+                || SmallCargo != 0
+                || LargeCargo != 0
+                || ColonyShip != 0
+                || Recycler != 0
+                || EspionageProbe != 0
+                || SolarSatellite != 0
+                || Crawler != 0
+                || Reaper != 0
+                || Pathfinder != 0;
+        }
+
+        public Ships GetMovableShips()
+        {
+            return new(this)
+            {
+                SolarSatellite = 0,
+                Crawler = 0,
+            };
+        }
+
+        public Ships Add(Buildable buildable, ulong quantity)
+        {
+            foreach (PropertyInfo prop in this.GetType().GetProperties())
+            {
+                if (prop.Name == buildable.ToString() && prop.GetValue(this) != null)
+                {
+                    prop.SetValue(this, (ulong)prop.GetValue(this) + quantity);
+                }
+            }
+            return this;
+        }
+
+        public Ships Remove(Buildable buildable, ulong quantity)
+        {
+            foreach (PropertyInfo prop in this.GetType().GetProperties())
+            {
+                if (prop.Name == buildable.ToString() && prop.GetValue(this) != null)
+                {
+                    var val = (ulong)prop.GetValue(this);
+                    if (val >= quantity)
+                        prop.SetValue(this, val);
+                    else
+                        prop.SetValue(this, 0);
+                }
+            }
+            return this;
+        }
+
+        public bool HasAtLeast(Ships ships, ulong times = 1)
+        {
+            foreach (PropertyInfo prop in this.GetType().GetProperties())
+            {
+                if (prop.GetValue(this) != null && prop.GetValue(ships) != null && (ulong)prop.GetValue(this) * times < (ulong)prop.GetValue(ships))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    public record FleetPrediction
+    {
+        public ulong Time { get; set; }
+
+        public ulong Fuel { get; set; }
+    }
+
+    public record Fleet
+    {
+        public Mission Mission { get; init; } = Mission.None;
+
+        public bool ReturnFlight { get; init; }
+
+        public bool InDeepSpace { get; init; }
+
+        public uint Id { get; init; }
+
+        public Resources Resources { get; init; } = new();
+
+        public Coordinate Origin { get; init; } = new();
+
+        public Coordinate Destination { get; init; } = new();
+
+        public Ships Ships { get; init; } = new();
+
+        public DateTime StartTime { get; init; }
+
+        public DateTime ArrivalTime { get; init; }
+
+        public DateTime? BackTime { get; init; }
+
+        public int ArriveIn { get; init; }
+
+        public int? BackIn { get; init; }
+
+        public int? UnionId { get; init; }
+
+        public int TargetPlanetId { get; init; }
+    }
+
+    public record AttackerFleet
+    {
+        public uint Id { get; init; }
+
+        public Mission MissionType { get; init; } = Mission.None;
+
+        public Coordinate Origin { get; init; } = new();
+
+        public Coordinate Destination { get; init; } = new();
+
+        public string DestinationName { get; init; } = string.Empty;
+
+        public DateTime ArrivalTime { get; init; }
+
+        public int ArriveIn { get; init; }
+
+        public string AttackerName { get; init; } = string.Empty;
+
+        public int AttackerId { get; init; }
+
+        public int UnionId { get; init; }
+
+        public int Missiles { get; init; }
+
+        public Ships Ships { get; init; } = new();
+
+        public bool IsOnlyProbes()
+        {
+            if (Ships.EspionageProbe == 0)
+            {
+                return false;
+            }
+
+            return Ships.Battlecruiser == 0
+                && Ships.Battleship == 0
+                && Ships.Bomber == 0
+                && Ships.ColonyShip == 0
+                && Ships.Cruiser == 0
+                && Ships.Deathstar == 0
+                && Ships.Destroyer == 0
+                && Ships.HeavyFighter == 0
+                && Ships.LargeCargo == 0
+                && Ships.LightFighter == 0
+                && Ships.Pathfinder == 0
+                && Ships.Reaper == 0
+                && Ships.Recycler == 0
+                && Ships.SmallCargo == 0;
+        }
+    }
+
+    public record Slots
+    {
+        public uint InUse { get; init; }
+
+        public uint Total { get; init; }
+
+        public uint ExpInUse { get; init; }
+
+        public uint ExpTotal { get; init; }
+
+        public uint Free
+        {
+            get
+            {
+                return Total - InUse;
+            }
+        }
+
+        public uint ExpFree
+        {
+            get
+            {
+                return ExpTotal - ExpInUse;
+            }
+        }
+    }
+
+    public record Researches : IBuildable
+    {
+        public uint EnergyTechnology { get; init; }
+
+        public uint LaserTechnology { get; init; }
+
+        public uint IonTechnology { get; init; }
+
+        public uint HyperspaceTechnology { get; init; }
+
+        public uint PlasmaTechnology { get; init; }
+
+        public uint CombustionDrive { get; init; }
+
+        public uint ImpulseDrive { get; init; }
+
+        public uint HyperspaceDrive { get; init; }
+
+        public uint EspionageTechnology { get; init; }
+
+        public uint ComputerTechnology { get; init; }
+
+        public uint Astrophysics { get; init; }
+
+        public uint IntergalacticResearchNetwork { get; init; }
+
+        public uint GravitonTechnology { get; init; }
+
+        public uint WeaponsTechnology { get; init; }
+
+        public uint ShieldingTechnology { get; init; }
+
+        public uint ArmourTechnology { get; init; }
+    }
+
+    public record LifeformResearches : IBuildable
+    {
+        public uint IntergalacticEnvoys { get; init; }
+
+        public uint HighPerformanceExtractors { get; init; }
+
+        public uint FusionDrives { get; init; }
+
+        public uint StealthFieldGenerator { get; init; }
+
+        public uint OrbitalDen { get; init; }
+
+        public uint ResearchAI { get; init; }
+
+        public uint HighPerformanceTerraformer { get; init; }
+
+        public uint EnhancedProductionTechnologies { get; init; }
+
+        public uint LightFighterMkII { get; init; }
+
+        public uint CruiserMkII { get; init; }
+
+        public uint ImprovedLabTechnology { get; init; }
+
+        public uint PlasmaTerraformer { get; init; }
+
+        public uint LowTemperatureDrives { get; init; }
+
+        public uint BomberMkII { get; init; }
+
+        public uint DestroyerMkII { get; init; }
+
+        public uint BattlecruiserMkII { get; init; }
+
+        public uint RobotAssistants { get; init; }
+
+        public uint Supercomputer { get; init; }
+    }
+
+    public record Production
+    {
+        public uint Id { get; init; }
+
+        public ulong Nbr { get; init; }
+    }
+
+    public record Constructions
+    {
+        public uint BuildingId { get; init; }
+
+        public uint BuildingCountdown { get; init; }
+
+        public uint ResearchId { get; init; }
+
+        public uint ResearchCountdown { get; init; }
+    }
+
+    public record GalaxyDebris : Debris
+    {
+        public ulong RecyclersNeeded { get; init; }
+    }
+
+    public record ExpeditionDebris : Debris
+    {
+        public ulong PathfindersNeeded { get; init; }
+    }
+
+    public record Debris
+    {
+        public ulong Metal { get; init; }
+
+        public ulong Crystal { get; init; }
+
+        public Resources Resources
+        {
+            get
+            {
+                return new()
+                {
+                    Metal = Metal,
+                    Crystal = Crystal,
+                };
+            }
+        }
+    }
+
+    public record Player
+    {
+        public uint Id { get; init; }
+
+        public string Name { get; init; } = string.Empty;
+
+        public uint Rank { get; init; }
+
+        public bool IsBandit { get; init; }
+
+        public bool IsStarlord { get; init; }
+
+        public PlayerClass Class { get; init; }
+    }
+
+    public record Alliance
+    {
+        public uint Id { get; init; }
+
+        public string Name { get; init; } = string.Empty;
+
+        public uint Rank { get; init; }
+
+        public uint Member { get; init; }
+
+        public AllianceClass Class { get; init; }
+    }
+
+    public record GalaxyInfo
+    {
+        public uint Galaxy { get; init; }
+
+        public uint System { get; init; }
+
+        public List<Planet> Planets { get; init; } = new();
+
+        public ExpeditionDebris ExpeditionDebris { get; init; } = new();
+    }
+
+    public record FleetHypotesis
+    {
+        public Celestial Origin { get; set; } = new();
+
+        public Coordinate Destination { get; set; } = new();
+
+        public Ships Ships { get; set; } = new();
+
+        public Mission Mission { get; set; }
+
+        public decimal Speed { get; set; }
+
+        public ulong Duration { get; set; }
+
+        public ulong Fuel { get; set; }
+    }
+
+    public record Staff
+    {
+        public bool Commander { get; init; }
+
+        public bool Admiral { get; init; }
+
+        public bool Engineer { get; init; }
+
+        public bool Geologist { get; init; }
+
+        public bool Technocrat { get; init; }
+
+        public bool IsFull
+        {
+            get
+            {
+                return Commander && Admiral && Engineer && Geologist && Technocrat;
+            }
+        }
+    }
+
+    public record Resource : BaseResource
+    {
+        public ulong StorageCapacity { get; init; }
+
+        public ulong CurrentProduction { get; init; }
+
+        public ulong DenCapacity { get; init; }
+    }
+
+    public record Energy : BaseResource
+    {
+        public ulong CurrentProduction { get; init; }
+
+        public ulong Consumption { get; init; }
+    }
+
+    public record Darkmatter : BaseResource
+    {
+        public ulong Purchased { get; init; }
+
+        public ulong Found { get; init; }
+    }
+
+    public record Population : BaseResource
+    {
+        public ulong StorageCapacity { get; init; }
+
+        public ulong SafeCapacity { get; init; }
+
+        public double GrowthRate { get; init; }
+
+        public ulong CapableToFeed { get; init; }
+
+        public ulong NeedFood { get; init; }
+
+        public double SingleFoodConsumption { get; init; }
+    }
+
+    public record Food : BaseResource
+    {
+        public ulong StorageCapacity { get; init; }
+
+        public double CapableToFeed { get; init; }
+
+        public ulong CurrentProduction { get; init; }
+
+        public ulong ExtraProduction { get; init; }
+
+        public ulong Consumption { get; init; }
+    }
+
+    public abstract record BaseResource
+    {
+        public ulong Available { get; init; }
+    }
+
+    public record ResourcesProduction
+    {
+        public Resource Metal { get; init; } = new();
+
+        public Resource Crystal { get; init; } = new();
+
+        public Resource Deuterium { get; init; } = new();
+
+        public Energy Energy { get; init; } = new();
+
+        public Darkmatter Darkmatter { get; init; } = new();
+
+        public Population Population { get; init; } = new();
+
+        public Food Food { get; init; } = new();
+    }
+
+    public record Techs
+    {
+        public Buildings Buildings { get; init; } = new();
+
+        public Facilities Facilities { get; init; } = new();
+
+        public Ships Ships { get; init; } = new();
+
+        public Defences Defences { get; init; } = new();
+
+        public Researches Researches { get; init; } = new();
+
+        public LifeformBuildings LifeformBuildings { get; init; } = new();
+
+        public LifeformResearches LifeformResearches { get; init; } = new();
+    }
+
+    public record AutoMinerSettings
+    {
+        public bool OptimizeForStart { get; init; }
+
+        public bool PrioritizeRobotsAndNanites { get; init; }
+
+        public double MaxDaysOfInvestmentReturn { get; init; }
+
+        public uint DepositHours { get; init; }
+
+        public bool BuildDepositIfFull { get; init; }
+
+        public ulong DeutToLeaveOnMoons { get; init; }
+    }
 }

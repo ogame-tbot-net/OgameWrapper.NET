@@ -15,28 +15,37 @@ namespace OgameWrapper
             Value = value;
         }
 
-        public static Page LobbyLogin = new("/game/lobbylogin.php?id={0}&token={1}");
-        public static Page Overview = new("/game/index.php?page=ingame&component=overview");
-        public static Page Rewards = new("/game/index.php?page=rewards");
-        public static Page Supplies = new("/game/index.php?page=ingame&component=supplies");
-        public static Page ResourceSettings = new("/game/index.php?page=ingame&component=resourceSettings&cp={0}");
-        public static Page Facilities = new("/game/index.php?page=ingame&component=facilities");
-        public static Page TraderOverview = new("/game/index.php?page=ingame&component=traderOverview");
-        public static Page Research = new("/game/index.php?page=ingame&component=research");
-        public static Page Shipyard = new("/game/index.php?page=ingame&component=shipyard");
-        public static Page Defenses = new("/game/index.php?page=ingame&component=defenses");
-        public static Page FleetDispatch = new("/game/index.php?page=ingame&component=fleetdispatch");
-        public static Page Movement = new("/game/index.php?page=ingame&component=movement");
-        public static Page Galaxy = new("/game/index.php?page=ingame&component=galaxy");
-        public static Page Alliance = new("/game/index.php?page=ingame&component=alliance");
-        public static Page Premium = new("/game/index.php?page=ingame&component=premium");
-        public static Page Shop = new("/game/index.php?page=ingame&component=shop");
+        public static Page LobbyLogin = new("/game/lobbylogin.php");
+        public static Page Overview = GetPage("ingame", "overview");
+        public static Page Rewards = GetPage("ingame", "rewards");
+        public static Page Supplies = GetPage("ingame", "supplies");
+        public static Page ResourceSettings = GetPage("ingame", "resourceSettings");
+        public static Page Facilities = GetPage("ingame", "facilities");
+        public static Page TraderOverview = GetPage("ingame", "traderOverview");
+        public static Page Research = GetPage("ingame", "research");
+        public static Page Shipyard = GetPage("ingame", "shipyard");
+        public static Page Defenses = GetPage("ingame", "defenses");
+        public static Page FleetDispatch = GetPage("ingame", "fleetdispatch");
+        public static Page Movement = GetPage("ingame", "movement");
+        public static Page Galaxy = GetPage("ingame", "galaxy");
+        public static Page Alliance = GetPage("ingame", "alliance");
+        public static Page Premium = GetPage("ingame", "premium");
+        public static Page Shop = GetPage("ingame", "shop");
 
-        public static Page FetchCelestialResources = new("/game/index.php?page=fetchResources&ajax=1&cp={0}");
-        public static Page FetchTechs = new("/game/index.php?page=fetchTechs&ajax=1");
-        public static Page FetchCelestialTechs = new("/game/index.php?page=fetchTechs&ajax=1&cp={0}");
+        public static Page FetchResources = GetPage("fetchResources");
+        public static Page FetchTechs = GetPage("fetchTechs");
 
-        public static Page CharactersClassSelection = new("/game/index.php?page=ingame&component=characterclassselection&action=selectClass&ajax=1&asJson=1");
+        public static Page CharactersClassSelection = GetPage("ingame", "characterclassselection");
+
+        private static Page GetPage(string page, string? component = null)
+        {
+            var url = $"/game/index.php?page={page}";
+            if (component != null)
+            {
+                url += $"&component={component}";
+            }
+            return new(url);
+        }
     }
 
     internal class CacheEntry
@@ -46,7 +55,6 @@ namespace OgameWrapper
         public DateTime Date { get; set; } = DateTime.MinValue;
 
         public IRestResponse<object> Response { get; set; } = new RestResponse<object>();
-
     }
 
     internal class CharacterClassSelectionResponse
@@ -84,7 +92,7 @@ namespace OgameWrapper
                 public string Link { get; init; } = string.Empty;
             }
 
-            public PlayerClasses Id { get; init; } = PlayerClasses.NoClass;
+            public PlayerClass Id { get; init; } = PlayerClass.NoClass;
 
             public string Name { get; init; } = string.Empty;
 
@@ -125,7 +133,7 @@ namespace OgameWrapper
 
         public string PremiumLink { get; init; } = string.Empty;
 
-        public PlayerClasses ChracterClassId { get; init; } = PlayerClasses.NoClass;
+        public PlayerClass ChracterClassId { get; init; } = PlayerClass.NoClass;
 
         public string Token { get; init; } = string.Empty;
 
@@ -181,8 +189,9 @@ namespace OgameWrapper
         {
             var token = await LobbyClient.GetServerToken(Account);
 
-            var url = string.Format(Page.LobbyLogin.Value, Account.Id, token);
-            RestRequest request = new(url);
+            RestRequest request = new(Page.LobbyLogin.Value);
+            request.AddQueryParameter("id", Account.Id.ToString());
+            request.AddQueryParameter("token", token);
 
             var response = await HttpClient.ExecuteAsync(request);
             if (response.StatusCode != HttpStatusCode.OK)
@@ -319,7 +328,7 @@ namespace OgameWrapper
             return Extractor.GetFleetSpeedHolding(response.Content);
         }
 
-        public async Task<PlayerClasses> GetPlayerClass(bool useCache = true)
+        public async Task<PlayerClass> GetPlayerClass(bool useCache = true)
         {
             RestRequest request = new(Page.Overview.Value);
             var response = await ExecuteRequestAsync(request, useCache);
@@ -350,14 +359,16 @@ namespace OgameWrapper
         public async Task<Researches> GetResearches(bool useCache = true)
         {
             RestRequest request = new(Page.FetchTechs.Value);
+            request.AddQueryParameter("ajax", "1");
             var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetTechs(response.Content).Researches;
         }
 
         public async Task<Techs> GetTechs(Celestial celestial, bool useCache = true)
         {
-            var url = string.Format(Page.FetchCelestialTechs.Value, celestial.ID);
-            RestRequest request = new(url);
+            RestRequest request = new(Page.FetchTechs.Value);
+            request.AddQueryParameter("ajax", "1");
+            request.AddQueryParameter("cp", celestial.Id.ToString());
             var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetTechs(response.Content);
         }
@@ -374,13 +385,13 @@ namespace OgameWrapper
             return techs.Facilities;
         }
 
-        public async Task<LifeformBuildings?> GetLifeformBuildings(Celestial celestial, bool useCache = true)
+        public async Task<LifeformBuildings> GetLifeformBuildings(Celestial celestial, bool useCache = true)
         {
             var techs = await GetTechs(celestial, useCache);
             return techs.LifeformBuildings;
         }
 
-        public async Task<LifeformResearches?> GetLifeformResearches(Planet planet, bool useCache = true)
+        public async Task<LifeformResearches> GetLifeformResearches(Planet planet, bool useCache = true)
         {
             var techs = await GetTechs(planet, useCache);
             return techs.LifeformResearches;
@@ -400,24 +411,28 @@ namespace OgameWrapper
 
         public async Task<Resources> GetResources(Celestial celestial, bool useCache = true)
         {
-            var url = string.Format(Page.FetchCelestialResources.Value, celestial.ID);
-            RestRequest request = new(url);
+            RestRequest request = new(Page.FetchResources.Value);
+            request.AddQueryParameter("ajax", "1");
+            request.AddQueryParameter("asJson", "1");
+            request.AddQueryParameter("cp", celestial.Id.ToString());
             var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetResources(response.Content);
         }
 
         public async Task<ResourceSettings> GetResourceSettings(Celestial celestial, bool useCache = true)
         {
-            var url = string.Format(Page.ResourceSettings.Value, celestial.ID);
-            RestRequest request = new(url);
+            RestRequest request = new(Page.ResourceSettings.Value);
+            request.AddQueryParameter("cp", celestial.Id.ToString());
             var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetResourcesSettings(response.Content);
         }
 
         public async Task<ResourcesProduction> GetResourcesProduction(Celestial celestial, bool useCache = true)
         {
-            var url = string.Format(Page.FetchCelestialResources.Value, celestial.ID);
-            RestRequest request = new(url);
+            RestRequest request = new(Page.FetchResources.Value);
+            request.AddQueryParameter("ajax", "1");
+            request.AddQueryParameter("asJson", "1");
+            request.AddQueryParameter("cp", celestial.Id.ToString());
             var response = await ExecuteRequestAsync(request, useCache);
             return Extractor.GetResourcesProduction(response.Content);
         }
@@ -429,11 +444,14 @@ namespace OgameWrapper
             return Extractor.GetSlots(response.Content);
         }
 
-        public async Task SelectInitialPlayerClass(PlayerClasses playerClass)
+        public async Task SelectInitialPlayerClass(PlayerClass playerClass)
         {
             RestRequest request = new(Page.CharactersClassSelection.Value, Method.POST);
-            request.AddHeader("Referer", $"https://{ServerHost}/game/index.php?page=ingame&component=characterclassselection");
-            request.AddParameter("characterClassId", (int)playerClass, ParameterType.QueryString);
+            request.AddHeader("Referer", $"https://{ServerHost}{Page.CharactersClassSelection.Value}");
+            request.AddQueryParameter("ajax", "1");
+            request.AddQueryParameter("asJson", "1");
+            request.AddQueryParameter("characterClassId", ((int)playerClass).ToString());
+            request.AddQueryParameter("action", "selectClass");
             request.AddHeader("X-Requested-With", "XMLHttpRequest");
 
             var response = await ExecuteRequestAsync<CharacterClassSelectionResponse>(request);
