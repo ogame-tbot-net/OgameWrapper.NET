@@ -49,17 +49,22 @@ namespace OgameWrapper.Includes
         {
             ulong baseCargo;
             var bonus = (hyperspaceTech * 5ul);
+
             switch (buildable)
             {
                 case Buildable.SmallCargo:
                     baseCargo = 5000;
                     if (playerClass == PlayerClass.Collector)
+                    {
                         bonus += 25;
+                    }
                     break;
                 case Buildable.LargeCargo:
                     baseCargo = 25000;
                     if (playerClass == PlayerClass.Collector)
+                    {
                         bonus += 25;
+                    }
                     break;
                 case Buildable.LightFighter:
                     baseCargo = 50;
@@ -79,13 +84,15 @@ namespace OgameWrapper.Includes
                 case Buildable.Recycler:
                     baseCargo = 20000;
                     if (playerClass == PlayerClass.General)
-                        bonus += 25;
+                    {
+                        bonus += 20;
+                    }
                     break;
                 case Buildable.EspionageProbe:
                     baseCargo = probeCargo;
                     break;
                 case Buildable.Bomber:
-                    baseCargo = 750;
+                    baseCargo = 500;
                     break;
                 case Buildable.Destroyer:
                     baseCargo = 2000;
@@ -97,16 +104,19 @@ namespace OgameWrapper.Includes
                     baseCargo = 750;
                     break;
                 case Buildable.Reaper:
-                    baseCargo = 7000;
+                    baseCargo = 10000;
                     break;
                 case Buildable.Pathfinder:
                     baseCargo = 10000;
                     if (playerClass == PlayerClass.General)
-                        bonus += 25;
+                    {
+                        bonus += 20;
+                    }
                     break;
                 default:
                     return 0;
             }
+
             return baseCargo * (bonus + 100) / 100;
         }
 
@@ -1644,6 +1654,7 @@ namespace OgameWrapper.Includes
 
             return depositToBuild;
         }
+        
         public static Buildable GetNextFacilityToBuild(Planet planet, Researches researches, Buildings maxBuildings, Facilities maxFacilities, PlayerClass playerClass, Staff staff, ServerData serverData, AutoMinerSettings settings, double ratio = 1, bool force = false)
         {
             Buildable facilityToBuild = Buildable.Null;

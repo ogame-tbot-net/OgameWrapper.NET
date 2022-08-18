@@ -341,7 +341,7 @@ namespace OgameWrapper.Model
                 && Buildings.DeuteriumSynthesizer >= buildings.DeuteriumSynthesizer;
         }
     }
-    
+
     public record ServerData
     {
         public string Name { get; init; } = string.Empty;
@@ -468,6 +468,14 @@ namespace OgameWrapper.Model
             get
             {
                 return Metal + Crystal + Deuterium;
+            }
+        }
+
+        public ulong Points
+        {
+            get
+            {
+                return TotalResources / 1000;
             }
         }
 
